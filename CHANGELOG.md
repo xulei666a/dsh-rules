@@ -2,6 +2,13 @@
 
 本文件记录**发布版本**的变更；0.x 开发期的完整逐条历史见 [`docs/CHANGELOG-full.md`](docs/CHANGELOG-full.md)。
 
+## 1.0.7 (2026-10-31) — 发送失败修复
+
+- **修复「发送失败」**：宿主 `session/create` 的 `workspaceId` 与 `cwd` 是**互斥**的（传两个会校验失败，之前被吞掉 → 会话没建出来 → `session not found`）。现在改成：先用 `cwd` 建会话，再用 `workspaceController.insertSessionBefore({workspaceId, sessionId})` 把会话挂进「准则会话分组」。
+- 状态里的会话不存在（历史残留 id）时自动重建并重试投递；创建错误不再被吞，会显示出具体原因。
+- 自助手状态修正：复用已存在的 `rules-assistant-main` 会话。
+- 自检 111 项、客户端 4 项通过。
+
 ## 1.0.6 (2026-10-31) — 会话真正进分组
 
 - **修复「分组建了但对话在默认位置」**：`sessionController.create` 必须同时带 `workspaceId`，只给 `cwd` 时 DSH 会把会话放进默认/未分组。现在先 `workspaceController.create` 拿到 `workspaceId`，再带 `workspaceId + cwd` 建会话；`assistant.json` 记录 `workspaceId`，不匹配时自动换新会话并归档旧的。
