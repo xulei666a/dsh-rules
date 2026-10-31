@@ -1710,6 +1710,7 @@ key：${r.key}
   }
   function openAssistantInSidebar() {
     const sid = assistantSid || '';
+    if (!sid) { notify('还没有对话，先发一条消息再点放大'); return; }
     try {
       const w = window.parent && window.parent !== window ? window.parent : null;
       const doc = (w && w.document) || document;
