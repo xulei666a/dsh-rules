@@ -2,6 +2,12 @@
 
 本文件记录**发布版本**的变更；0.x 开发期的完整逐条历史见 [`docs/CHANGELOG-full.md`](docs/CHANGELOG-full.md)。
 
+## 1.0.6 (2026-10-31) — 会话真正进分组
+
+- **修复「分组建了但对话在默认位置」**：`sessionController.create` 必须同时带 `workspaceId`，只给 `cwd` 时 DSH 会把会话放进默认/未分组。现在先 `workspaceController.create` 拿到 `workspaceId`，再带 `workspaceId + cwd` 建会话；`assistant.json` 记录 `workspaceId`，不匹配时自动换新会话并归档旧的。
+- **放大按钮改进**：在父页面（含 Shadow DOM）里按「固定标题 → sessionId → 首条用户消息前 12 字」多候选匹配会话行并点击；找不到时提示里会带诊断信息（`parent=yes/no`、`nodes=N`），便于判断是不是沙箱限制。
+- 自检 111 项、客户端 4 项通过。
+
 ## 1.0.5 (2026-10-31) — 真正创建分组 + 放大跳转
 
 - **修复「未分组」**：仅把 `cwd` 指到新目录并不会在 DSH 里生成分组；现在通过宿主 `workspaceController.create({path})` 注册工作区，再用 `workspace/rename` 命名为「准则会话分组」，助手会话才会出现在该分组下。

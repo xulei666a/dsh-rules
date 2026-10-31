@@ -1634,6 +1634,7 @@ key：${r.key}
   let assistantSig = '';
   let assistantWasBusy = false;
   let assistantSid = '';
+  let assistantFirstText = '';
   const escA = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   function renderAssistant(messages, extra) {
     const box = $('assistant-msgs'); if (!box) return;
@@ -1658,6 +1659,7 @@ key：${r.key}
     try {
       const j = await api('/dsh-rules/assistant');
       assistantSid = j.sessionId || assistantSid;
+      assistantFirstText = ((j.messages || []).find((m) => m.role === 'user') || {}).text || assistantFirstText;
       renderAssistant(j.messages || []);
       const busy = !!j.busy;
       // 助手干完活（可能新建了文件夹/移动了规则）→ 自动刷新列表和分类，不用退出重进
@@ -1711,24 +1713,36 @@ key：${r.key}
   function openAssistantInSidebar() {
     const sid = assistantSid || '';
     if (!sid) { notify('还没有对话，先发一条消息再点放大'); return; }
+    let diag = '';
     try {
       const w = window.parent && window.parent !== window ? window.parent : null;
       const doc = (w && w.document) || document;
       const all = collectAll(doc, [], 0);
+      diag = 'parent=' + (w ? 'yes' : 'no') + ' nodes=' + all.length;
       const clickable = (el) => el.closest('button,[role="button"],a,[data-session-id],[data-sid],li') || el;
-      // 1) 先按 sessionId 精确找
-      let hit = sid ? all.find((el) => el.getAttribute && (el.getAttribute('data-session-id') === sid || el.getAttribute('data-sid') === sid)) : null;
-      // 2) 再按标题「准则助手」找（文本完全等于，或父元素里包含）
-      if (!hit) hit = all.find((el) => el.children.length === 0 && (el.textContent || '').trim() === '准则助手');
-      if (!hit) hit = all.find((el) => (el.textContent || '').trim() === '准则助手');
+      // 候选文本：固定标题 → sessionId → 首条用户消息（侧栏标题通常由它生成）
+      const cands = ['准则助手', sid, (assistantFirstText || '').replace(/^（先读[^）]*）\s*/, '').slice(0, 12)].filter(Boolean);
+      let hit = all.find((el) => el.getAttribute && (el.getAttribute('data-session-id') === sid || el.getAttribute('data-sid') === sid));
+      if (!hit) {
+        for (const c of cands) {
+          hit = all.find((el) => el.children.length === 0 && (el.textContent || '').trim() === c);
+          if (hit) break;
+        }
+      }
+      if (!hit) {
+        for (const c of cands) {
+          hit = all.find((el) => (el.textContent || '').includes(c));
+          if (hit) break;
+        }
+      }
       if (hit) {
         clickable(hit).click();
         closeAssistant();
         return;
       }
-    } catch (e) { /* 沙箱/跨域时走回退 */ }
+    } catch (e) { diag = 'error=' + e.message; }
     if (sid && navigator.clipboard) navigator.clipboard.writeText(sid).catch(() => {});
-    notify('会话在左侧「准则会话分组 → 准则助手」；已复制会话 id ' + (sid || ''));
+    notify('没找到左侧会话行（' + (diag || 'unknown') + '），已复制 id；也可在「准则会话分组」里点「准则助手」');
   }
   $('assistant-expand').addEventListener('click', openAssistantInSidebar);
   $('btn-assistant').addEventListener('click', () => openAssistant(''));

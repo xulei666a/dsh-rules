@@ -7,7 +7,7 @@ Keeps every agent guideline in **one rule library**: manage, resolve, sync, audi
 - **Coverage**: `default` (always-on) / `local` (routed by task domain) + per-conversation pins
 - **23 model tools · 23 host routes · admin page + right-sidebar panel + in-panel assistant**
 
-> Version **1.0.5** (first public release). See [CHANGELOG.md](CHANGELOG.md) and [docs/QUICKSTART.md](docs/QUICKSTART.md).
+> Version **1.0.6** (first public release). See [CHANGELOG.md](CHANGELOG.md) and [docs/QUICKSTART.md](docs/QUICKSTART.md).
 
 ## Features
 
