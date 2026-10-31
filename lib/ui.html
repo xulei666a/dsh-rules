@@ -1710,33 +1710,55 @@ key：${r.key}
     }
     return out;
   }
-  function openAssistantInSidebar() {
+  function fireClick(w, el) {
+    el.scrollIntoView?.({ block: 'center' });
+    const win = w || window;
+    for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
+      const Ctor = type.startsWith('pointer') && win.PointerEvent ? win.PointerEvent
+        : type.startsWith('mouse') || type === 'click' ? win.MouseEvent : win.Event;
+      try { el.dispatchEvent(new Ctor(type, { bubbles: true, cancelable: true, view: win })); } catch { try { el.click(); } catch {} }
+    }
+  }
+  async function openAssistantInSidebar() {
     const sid = assistantSid || '';
     if (!sid) { notify('还没有对话，先发一条消息再点放大'); return; }
     let diag = '';
     try {
       const w = window.parent && window.parent !== window ? window.parent : null;
       const doc = (w && w.document) || document;
-      const all = collectAll(doc, [], 0);
+      const collect = () => collectAll(doc, [], 0);
+      let all = collect();
       diag = 'parent=' + (w ? 'yes' : 'no') + ' nodes=' + all.length;
-      const clickable = (el) => el.closest('button,[role="button"],a,[data-session-id],[data-sid],li') || el;
-      // 候选文本：固定标题 → sessionId → 首条用户消息（侧栏标题通常由它生成）
-      const cands = ['准则助手', sid, (assistantFirstText || '').replace(/^（先读[^）]*）\s*/, '').slice(0, 12)].filter(Boolean);
-      let hit = all.find((el) => el.getAttribute && (el.getAttribute('data-session-id') === sid || el.getAttribute('data-sid') === sid));
-      if (!hit) {
+      const clickable = (el) => el.closest('button,[role="button"],a,li,[tabindex]') || el.parentElement || el;
+      const cleanFirst = (assistantFirstText || '').replace(/^（先读[^）]*）\s*/m, '').trim();
+      const cands = ['准则助手', sid, cleanFirst.slice(0, 12)].filter(Boolean);
+      const findSession = () => {
+        let hit = all.find((el) => el.getAttribute && (el.getAttribute('data-session-id') === sid || el.getAttribute('data-sid') === sid));
+        if (hit) return hit;
         for (const c of cands) {
           hit = all.find((el) => el.children.length === 0 && (el.textContent || '').trim() === c);
-          if (hit) break;
+          if (hit) return hit;
         }
-      }
-      if (!hit) {
         for (const c of cands) {
           hit = all.find((el) => (el.textContent || '').includes(c));
-          if (hit) break;
+          if (hit) return hit;
         }
+        return null;
+      };
+      let hit = findSession();
+      if (!hit) {
+        // 会话可能收在分组里：先点开分组，再找一次
+        const group = all.find((el) => (el.textContent || '').trim() === '准则会话分组') || all.find((el) => (el.textContent || '').includes('准则会话分组'));
+        if (group) {
+          diag += ' group=found';
+          fireClick(w, clickable(group));
+          await new Promise((r) => setTimeout(r, 600));
+          all = collect();
+          hit = findSession();
+        } else diag += ' group=missing';
       }
       if (hit) {
-        clickable(hit).click();
+        fireClick(w, clickable(hit));
         closeAssistant();
         return;
       }

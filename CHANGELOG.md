@@ -2,6 +2,13 @@
 
 本文件记录**发布版本**的变更；0.x 开发期的完整逐条历史见 [`docs/CHANGELOG-full.md`](docs/CHANGELOG-full.md)。
 
+## 1.0.8 (2026-10-31) — 用 workspaceId 建会话（真进分组）
+
+- 读宿主源码确认：`sessionController.create` 接受 **workspaceId 或 cwd，二者互斥**；带 `workspaceId` 时会用 `workspaceRegistry.get(id)` 并让会话成为该工作区成员（这正是侧栏分组的来源）。
+- 1.0.7 用 cwd 建会话再 `insertSessionBefore` 挂组，但该接口只用于“在工作区内移动会话”，非成员挂不进去 → 仍显示默认位置。现在改为：**优先 `create({ sessionId, workspaceId })`**，失败才退回 cwd，并记录 `grouped` 标记；未确认入组的旧会话下次发送时自动换新会话。
+- 验证：自检 111 项通过；重启后发消息应出现在「准则会话分组」下。
+- 放大按钮改进：先找会话行，找不到则先点开「准则会话分组」再找；点击用 pointer/mouse/click 全套事件，兼容 Shadow DOM。
+
 ## 1.0.7 (2026-10-31) — 发送失败修复
 
 - **修复「发送失败」**：宿主 `session/create` 的 `workspaceId` 与 `cwd` 是**互斥**的（传两个会校验失败，之前被吞掉 → 会话没建出来 → `session not found`）。现在改成：先用 `cwd` 建会话，再用 `workspaceController.insertSessionBefore({workspaceId, sessionId})` 把会话挂进「准则会话分组」。
