@@ -22,6 +22,12 @@
 - **来源闸口与收割**：来源账、批量提取提案、合并去重、覆盖审计；`rules_collect` 做增量收录。
 - **管理页 / 右栏**：单文件 HTML，无构建；搜索、筛选、缩放、逐级下钻、动画。
 
+## 界面截图
+
+| 总览 | 助手 | 分类 |
+|---|---|---|
+| ![总览](docs/screenshots/01-overview.png) | ![助手](docs/screenshots/02-assistant.png) | ![分类](docs/screenshots/03-category.png) |
+
 ## 安装
 
 **A. 插件市场（推荐）**
