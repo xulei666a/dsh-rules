@@ -199,6 +199,8 @@ body.topo-standalone header, body.topo-standalone main { display:none; }
   @media (prefers-reduced-motion: reduce) { *, .level-scroll, .list-frame, #list-card-zoomwrap { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }
   .modal { position:fixed; inset:0; background:transparent; display:flex; align-items:center; justify-content:center; z-index:80; padding:16px; }
   .modal[hidden] { display:none; }
+  /* 确认框要压在任何其它弹窗（如助手面板）之上，否则点不到按钮 */
+  #ask-modal { z-index: 130; }
   /* 弹窗一律用白底卡片，文字深色，便于阅读 */
   .modal .card { width:min(580px, 94vw); max-height:88vh; overflow:auto; background:#fff; color:#111827; border:1px solid #e5e7eb; border-radius:14px; box-shadow:0 18px 60px rgba(0,0,0,.28); padding:18px 20px; }
   .modal .card h2 { color:#111827; }
@@ -1706,7 +1708,7 @@ key：${r.key}
     t.style.height = Math.min(140, t.scrollHeight) + 'px';
   });
   $('assistant-reset').addEventListener('click', async () => {
-    if (!(await askConfirm('新会话', '下一条消息会新建一条助手会话（旧会话会被替代；助手会话不会出现在左侧栏）。'))) return;
+    if (!(await askConfirm('新会话', '下一条消息会新建一条助手会话（旧会话会保留在左侧栏；普通对话不会再新增会话条目）。'))) return;
     try { await api('/dsh-rules/assistant', { action: 'reset' }); assistantSig = ''; $('assistant-msgs').innerHTML = ''; $('assistant-msgs').dataset.rendered = ''; $('assistant-state').textContent = '已重置'; }
     catch (e) { $('assistant-state').textContent = '重置失败：' + e.message; }
   });

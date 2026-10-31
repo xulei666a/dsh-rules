@@ -255,8 +255,10 @@ try {
   const sent = await asst.sendToAssistant(stub, '我下载了一个技能', { sessionId: 'test-assistant-1', cwd: tmp })
   check('能投递到会话（create+prompt）', sent.sessionId === 'test-assistant-1' && calls.some((c) => c[0] === 'prompt'))
   check('投递内容带用户原文', calls.find((c) => c[0] === 'prompt')[2].includes('我下载了一个技能'))
+  const beforeReset = asst.getAssistantState()?.sessionId
   asst.resetAssistant()
-  check('可重置助手会话', !asst.getAssistantState())
+  const afterReset = asst.getAssistantState()
+  check('可重置助手会话（换成新的会话 id）', Boolean(afterReset?.sessionId) && afterReset.sessionId !== beforeReset)
 
   // 13) 流程拓扑：单条准则 → 完整流程（按阶段 + 顺序边）
   const topo = await import(lib('topology.js'))
