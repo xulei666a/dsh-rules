@@ -1,0 +1,79 @@
+{
+  "name": "dsh-rules",
+  "version": "1.0.0",
+  "description": "DSH 统一准则/规则层：本地规则库 + 适用面（默认常驻 / 局部按任务域）+ 语义路由 + 分类树 + 管理页/右栏面板 + 面板内助手（读取规则、校准、个性化分类、问题台账）+ AGENTS 托管段同步。",
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "rules",
+    "guidelines",
+    "semantic-routing",
+    "coverage",
+    "cordis-plugin"
+  ],
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": {
+      "import": "./lib/index.js",
+      "default": "./lib/index.js"
+    },
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "rules",
+    "scripts",
+    "docs/QUICKSTART.md",
+    "docs/ARCHITECTURE.md",
+    "cordis.patch.yml",
+    "README.md",
+    "README.en.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "selftest": "node scripts/selftest.mjs",
+    "test": "node scripts/selftest.mjs",
+    "test:client": "node scripts/selftest-client.mjs",
+    "audit": "node scripts/cli.mjs audit",
+    "issues": "node scripts/cli.mjs issues",
+    "collect": "node scripts/cli.mjs collect --dry-run",
+    "sync": "node scripts/cli.mjs sync"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": ">=0.1.5-rc <2",
+    "@deepseek-ai/cordis": ">=4.0.2 <5",
+    "@deepseek-ai/schemastery": ">=3.18 <4"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/cordis": {
+      "optional": true
+    },
+    "@deepseek-ai/schemastery": {
+      "optional": true
+    }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xulei666a/dsh-rules.git"
+  },
+  "homepage": "https://github.com/xulei666a/dsh-rules#readme",
+  "bugs": {
+    "url": "https://github.com/xulei666a/dsh-rules/issues"
+  }
+}

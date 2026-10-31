@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Selftest (offline, temp HOME)
+        run: node scripts/selftest.mjs
+      - name: Client bundle contract
+        run: node scripts/selftest-client.mjs
+      - name: CLI smoke
+        run: |
+          node scripts/cli.mjs list
+          node scripts/cli.mjs audit
+          node scripts/cli.mjs issues
+          node scripts/cli.mjs collect --dry-run

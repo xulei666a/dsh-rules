@@ -1,0 +1,2132 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>dsh-rules · 统一准则管理</title>
+<style>
+  :root { color-scheme: light dark; --bg:#f6f7f9; --card:#fff; --line:#e5e7eb; --text:#111827; --muted:#6b7280; --accent:#2563eb; --warn:#d97706; --danger:#dc2626; --ok:#059669; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0e1626; --card:#121d33; --line:#22304d; --text:#e5e7eb; --muted:#94a3b8; --accent:#60a5fa; --warn:#fbbf24; --danger:#f87171; --ok:#34d399; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.55 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; background:var(--bg); color:var(--text); }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; gap:10px; align-items:center; flex-wrap:wrap; background:var(--card); position:sticky; top:0; z-index:5; }
+  h1 { font-size:16px; margin:0 10px 0 0; white-space:nowrap; }
+  button { font:inherit; padding:5px 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--text); cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.danger { color:var(--danger); border-color:var(--danger); }
+  button.ghost { border-color:transparent; color:var(--muted); }
+  button.small { padding:2px 9px; border-radius:6px; font-size:12.5px; }
+  main { display:grid; grid-template-columns:minmax(0,1fr); gap:14px; padding:14px 20px 28px; align-items:start; }
+  @media (max-width: 1060px) { main { grid-template-columns: 1fr; } }
+  section.card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; }
+  h2 { font-size:13.5px; margin:0 0 10px; color:var(--muted); font-weight:600; letter-spacing:.02em; }
+  .toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
+  input, select, textarea { font:inherit; padding:6px 9px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--text); }
+  input:focus, select:focus, textarea:focus { outline:2px solid color-mix(in srgb, var(--accent) 35%, transparent); border-color:var(--accent); }
+  textarea { min-height:74px; resize:vertical; width:100%; }
+  .list { display:flex; flex-direction:column; gap:6px; max-height:66vh; overflow:auto; padding-right:4px; }
+  .item { display:grid; grid-template-columns: minmax(0,1fr) auto; gap:4px 12px; padding:9px 11px; border:1px solid var(--line); border-radius:10px; cursor:pointer; background:transparent; }
+  .item:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+  .item.active { border-color:var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .item .name { font-weight:600; font-size:13.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .item .val { grid-column:1; color:var(--muted); font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .item .tags { grid-row:1 / span 2; grid-column:2; display:flex; gap:6px; align-items:center; }
+  .chip { font-size:11.5px; padding:1px 8px; border-radius:999px; border:1px solid var(--line); color:var(--muted); white-space:nowrap; }
+  .chip.pending { color:var(--warn); border-color:color-mix(in srgb, var(--warn) 50%, var(--line)); }
+  .chip.active { color:var(--ok); border-color:color-mix(in srgb, var(--ok) 45%, var(--line)); }
+  .chip.deprecated { color:var(--muted); text-decoration:line-through; }
+  .chip.warn { color:var(--warn); border-color:color-mix(in srgb, var(--warn) 60%, var(--line)); background:color-mix(in srgb, var(--warn) 10%, transparent); }
+  .empty { color:var(--muted); padding:18px 4px; font-size:13px; }
+  label.field { display:block; margin-bottom:10px; color:var(--muted); font-size:12.5px; }
+  label.field input, label.field select, label.field textarea { display:block; width:100%; margin-top:4px; color:var(--text); }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  details.adv { margin:4px 0 12px; border-top:1px dashed var(--line); padding-top:8px; }
+  details.adv summary { cursor:pointer; color:var(--muted); font-size:12.5px; }
+  .kv { display:grid; grid-template-columns:auto minmax(0,1fr); gap:5px 10px; font-size:12.5px; align-items:baseline; }
+  .kv .k { color:var(--muted); white-space:nowrap; }
+  .err { color:var(--danger); } .ok { color:var(--ok); }
+  .count { color:var(--muted); font-size:12.5px; }
+  .panel-title { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .group-item { display:inline-flex; align-items:center; gap:2px; }
+  .group-item .act { font-size:11px; padding:1px 5px; border-radius:6px; border:1px solid var(--line); color:var(--muted); background:transparent; cursor:pointer; }
+  .group-item .act:hover { color:var(--text); border-color:var(--accent); }
+  .scheme-bar { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
+  .scheme-bar select { max-width:180px; }
+  /* 更多操作菜单 */
+  details.menu { position:relative; }
+  details.menu > summary { list-style:none; cursor:pointer; font:inherit; font-size:12.5px; padding:2px 9px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--muted); }
+  details.menu > summary::-webkit-details-marker { display:none; }
+  details.menu > summary:hover { color:var(--text); border-color:var(--accent); }
+  details.menu[open] > summary { color:var(--text); border-color:var(--accent); }
+  .menu-items { position:absolute; top:calc(100% + 4px); left:0; z-index:30; min-width:132px; display:flex; flex-direction:column; gap:2px; padding:4px; background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.12); }
+  .menu-items button { text-align:left; background:transparent; border-color:transparent; font-size:12.5px; padding:5px 8px; border-radius:6px; }
+  .menu-items button:hover { background:color-mix(in srgb, var(--accent) 10%, transparent); border-color:transparent; }
+  .menu-items button.danger { color:var(--danger); }
+  .cat-bar { display:flex; flex-direction:column; gap:6px; }
+  /* 分类卡片 = 与规则卡片完全相同的 .item 卡片结构 */
+  .cat-card { border-radius:10px; }
+  .cat-card .name { display:flex; align-items:center; gap:6px; min-width:0; }
+  .cat-card .chev { color:var(--muted); font-size:9px; flex:none; }
+  .cat-card .c-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cat-card .c-actions, .rule-item .c-actions { display:none; gap:2px; margin-left:4px; }
+  .cat-card:hover .c-actions, .rule-item:hover .c-actions { display:inline-flex; }
+  .c-actions button { font-size:10px; line-height:1; padding:2px 5px; border-radius:5px; border:1px solid var(--line); background:transparent; color:var(--muted); cursor:pointer; }
+  .c-actions button:hover { color:var(--text); border-color:var(--accent); }
+  .sib-row { display:flex; flex-wrap:wrap; gap:6px; }
+  .sib { display:inline-flex; align-items:center; gap:5px; font:inherit; font-size:12px; padding:3px 9px; border:1px solid var(--line); border-radius:999px; background:transparent; color:var(--muted); cursor:pointer; }
+  .sib:hover { color:var(--text); border-color:color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .path-row { display:flex; align-items:center; gap:8px; padding:6px 11px; border:1px solid color-mix(in srgb, var(--accent) 55%, var(--line)); border-radius:10px; background:color-mix(in srgb, var(--accent) 10%, transparent); color:var(--text); font-size:12.5px; cursor:pointer; transition:background-color .45s ease, border-color .45s ease; }
+  .path-row:hover { background:color-mix(in srgb, var(--accent) 16%, transparent); }
+  .path-row .tri { color:var(--accent); font-size:9px; display:inline-block; transform:rotate(90deg); }
+  .path-row .p-title { font-weight:600; }
+  .path-row .count { margin-left:auto; color:var(--muted); font-size:11.5px; }
+  .path-row { position:relative; }
+  /* 折叠把手：栏正上方居中、底边贴着栏顶边；悬停显示，横向宽、纵向很矮 */
+  .fold-handle { position:absolute; left:50%; top:-14px; transform:translateX(-50%); width:56px; height:14px; border:1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); border-bottom:none; border-radius:8px 8px 0 0; background:var(--card); color:var(--accent); font-size:9px; line-height:14px; text-align:center; cursor:pointer; display:none; z-index:3; }
+  .fold-handle::after { content:'⏶'; }
+  .path-row:hover .fold-handle, .fold-handle:hover { display:block; }
+  /* 折叠：收「上方各层」+「当前层胶囊行」，只保留当前选中栏及下方内容 */
+  .crumb-seg { overflow:hidden; padding-top:14px; margin-top:-14px; transition:max-height .45s cubic-bezier(.33,.1,.15,1); position:relative; z-index:2; }
+  .crumb-caps { overflow:hidden; transition:max-height .45s cubic-bezier(.33,.1,.15,1); }
+  .crumbs { position:relative; z-index:10; }
+  .crumbs-restore { display:flex; justify-content:center; padding:0 0 2px; position:relative; z-index:11; }
+  .crumbs-restore[hidden] { display:none; }
+  .unfold-btn { border:1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); border-radius:999px; background:var(--card); color:var(--accent); font-size:11px; padding:1px 12px; cursor:pointer; }
+  .unfold-btn:hover { background:color-mix(in srgb, var(--accent) 10%, transparent); }
+  .rule-item { border-radius:10px; background:color-mix(in srgb, #f5c542 14%, var(--card)); border-color:color-mix(in srgb, #d9a400 26%, var(--line)); }
+  @media (prefers-color-scheme: dark) { .rule-item { background:color-mix(in srgb, #f5c542 18%, var(--card)); } }
+  /* 选中蓝底渐隐：取消选中时从浅蓝过渡回原本底色 */
+  .item { transition: background-color .45s ease, border-color .45s ease; }
+  .unassigned-card { border-style:solid; }
+  .cat-card, .path-row, .sib, .item[draggable="true"] { cursor:grab; }
+  .drag-over { border-color:var(--accent) !important; background:color-mix(in srgb, var(--accent) 14%, transparent) !important; }
+  /* 拖到上/下边缘 = 同级换位（插入线） */
+  .drop-before { box-shadow: inset 0 3px 0 var(--accent) !important; }
+  .drop-after { box-shadow: inset 0 -3px 0 var(--accent) !important; }
+  .rule-item.drop-before, .rule-item.drop-after { border-color:var(--accent) !important; }
+  .drop-badge { position:fixed; pointer-events:none; z-index:95; background:#111827; color:#f9fafb; font-size:11px; line-height:1.3; padding:2px 6px; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,.25); }
+  .sort-menu { position:fixed; z-index:120; background:#fff; border:1px solid #e5e7eb; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.14); padding:4px; min-width:168px; }
+  .sort-menu button { display:block; width:100%; text-align:left; border:0; background:transparent; padding:7px 10px; border-radius:6px; font-size:12.5px; color:#111827; cursor:pointer; }
+  .sort-menu button:hover { background:#f3f4f6; }
+  .sort-menu button.on { background:#eef2ff; color:#1d4ed8; font-weight:600; }
+  .topo-graph { overflow:auto; border:1px solid #e5e7eb; border-radius:10px; background:#fcfcfd; padding:6px; cursor:grab; }
+  .topo-graph.panning { cursor:grabbing; user-select:none; }
+  .topo-graph svg { display:block; }
+  .topo-graph .topo-g:hover rect { stroke:#2563eb; stroke-width:2; }
+body.topo-standalone header, body.topo-standalone main { display:none; }
+  body.topo-standalone { background:#f9fafb; }
+  #topo-page { position:fixed; inset:0; display:flex; flex-direction:column; gap:6px; padding:8px 10px; }
+  .topo-modal-card { width:min(1180px,94vw); height:min(82vh,900px); display:flex; flex-direction:column; gap:4px; padding:8px; }
+  #topo-view { flex:1; min-height:0; max-height:none; }
+  .topo-modal-tip { font-size:11px; color:#9ca3af; text-align:center; flex:0 0 auto; }  #topo-page .topo-graph { flex:1; min-height:0; max-height:none; }
+  #topo-page .topo-page-tip { font-size:11.5px; color:#6b7280; flex:0 0 auto; }
+  .topo-empty { padding:16px; color:#6b7280; font-size:12.5px; }
+  .dm-extra h3 { font-size:12.5px; margin:12px 0 4px; color:#111827; }
+  .dm-extra p { font-size:12.5px; line-height:1.7; color:#374151; margin:0 0 6px; }
+  .dm-extra .dm-warn { color:#b45309; }
+  .dm-acts { margin-top:4px; }
+  .rel-list { display:flex; flex-wrap:wrap; gap:6px; }
+  .rel-chip { font-size:12px; padding:3px 9px; border-radius:999px; border:1px solid #d1d5db; background:#fff; color:#111827; cursor:pointer; display:inline-flex; align-items:center; gap:5px; max-width:100%; }
+  .rel-chip:hover { border-color:#2563eb; }
+  .rel-why { font-size:10.5px; color:#6b7280; }
+  .move-list { display:flex; flex-direction:column; gap:6px; max-height:46vh; overflow:auto; margin:0 0 8px; }
+  .move-crumbs { display:flex; flex-direction:column; gap:4px; margin:2px 0 8px; }
+  .mv-row { display:flex; flex-wrap:wrap; align-items:center; gap:4px; }
+  .mv-arrow { color:#9ca3af; font-size:11px; }
+  .mv-section { font-size:11px; color:#9ca3af; margin-top:6px; }
+  .move-rule { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 10px; border:1px dashed #e5e7eb; border-radius:8px; font-size:12px; color:#6b7280; }
+  .mv-crumb { border:1px solid #e5e7eb; background:#fff; border-radius:999px; padding:2px 9px; font-size:12px; cursor:pointer; color:#374151; }
+  .mv-crumb:hover { border-color:#2563eb; }
+  .mv-crumb.sel { background:#fef3c7; border-color:#f59e0b; color:#92400e; font-weight:600; }
+  .move-card { display:flex; justify-content:space-between; align-items:center; gap:8px; text-align:left; border:1px solid #e5e7eb; background:#fff; border-radius:10px; padding:8px 10px; font-size:12.5px; color:#111827; cursor:pointer; }
+  .move-card:hover { border-color:#2563eb; }
+  .move-card.sel { background:#fef3c7; border-color:#f59e0b; color:#92400e; }
+  .move-card:disabled { opacity:.45; cursor:not-allowed; }
+  .mv-sub { font-size:11px; color:#6b7280; }
+  .dm-close { position:absolute; right:14px; top:12px; }
+  .rules-head { font-size:11.5px; color:#6b7280; margin:10px 2px 4px; }
+  .history-list { display:flex; flex-direction:column; gap:6px; max-height:62vh; overflow:auto; margin-bottom:10px; }
+  .hist-item { border:1px solid #e5e7eb; border-radius:10px; padding:8px 10px; background:#fff; }
+  .hist-head { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; font-size:11.5px; color:#6b7280; }
+  .hist-act { font-weight:600; }
+  .hist-act.create { color:#047857; }
+  .hist-act.update { color:#1d4ed8; }
+  .hist-act.remove { color:#b91c1c; }
+  .hist-rule { font-size:12.5px; font-weight:600; color:#111827; margin-top:2px; }
+  .hist-diff { font-size:12px; color:#374151; margin-top:4px; line-height:1.7; }
+  .hist-old { color:#b91c1c; text-decoration:line-through; text-decoration-color:#fca5a5; }
+  .hist-new { color:#047857; }
+  .hist-empty { padding:18px; text-align:center; color:#6b7280; }
+  .amsg { margin:6px 0; display:flex; }
+  .amsg .bubble { max-width:82%; padding:6px 10px; border-radius:10px; font-size:12.5px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
+  .amsg.user { justify-content:flex-end; }
+  .amsg.user .bubble { background:#2563eb; color:#fff; }
+  .amsg.assistant .bubble { background:#fff; color:#111827; border:1px solid #e5e7eb; }
+  .amsg.sys .bubble { background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-size:12px; }
+  .amsg .who { font-size:10.5px; color:#6b7280; margin:0 4px; align-self:flex-end; }
+  /* ---------- 状态过渡（v0.6.2 行为：元素本体位移/缩放形变） ---------- */
+  .morph-layer { position:fixed; inset:0; pointer-events:none; z-index:90; }
+  .morph-ghost { position:fixed; margin:0 !important; pointer-events:none; will-change:transform,opacity; }
+  .cat-bar.busy { pointer-events:none; }
+  /* 动画期间关掉 CSS 过渡，避免和手写 WAAPI 动画互相打架 */
+  .cat-bar.busy .item, .cat-bar.busy .path-row, .cat-bar.busy .sib { transition:none !important; }
+  /* ---------- 列表外框：工具栏保持固定，下面整块可上下滚动 ---------- */
+  /* 列表内容跟随外层缩放，自身不再单独滚动（由 #list-card-zoomwrap 统一滚动） */
+  .list-frame { padding-right:0; }
+  /* 网页式缩放控件 */
+  .zoom-bar { display:inline-flex; align-items:center; gap:2px; border:1px solid var(--line); border-radius:8px; padding:1px 4px; }
+  .zoom-bar button { border:0; background:transparent; color:var(--muted); font:inherit; font-size:13px; line-height:1; padding:2px 5px; cursor:pointer; border-radius:5px; }
+  .zoom-bar button:hover { background:color-mix(in srgb, var(--accent) 14%, transparent); color:var(--text); }
+  #zoom-val { font-size:11px; color:var(--muted); min-width:34px; text-align:center; }
+  .zoom-bar.outer { margin-left:auto; }
+  /* 外层缩放的只是框内内容：白框尺寸固定，内容超出时在框内滚动，不会溢出到框外 */
+  #list-card { width:100%; box-sizing:border-box; height:calc(100vh - 180px); min-height:420px; display:flex; flex-direction:column; overflow:hidden; }
+  #list-card-zoomwrap { flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; padding-right:6px; }
+  #list-card-zoomwrap::-webkit-scrollbar { width:8px; }
+  #list-card-zoomwrap::-webkit-scrollbar-thumb { background:color-mix(in srgb, var(--muted) 35%, transparent); border-radius:4px; }
+  #list-card-zoomwrap::-webkit-scrollbar-thumb:hover { background:color-mix(in srgb, var(--muted) 55%, transparent); }
+  #list-card-zoomwrap::-webkit-scrollbar-track { background:transparent; }
+  #list-card-inner { transform-origin: top left; }
+  /* 所有栏框宽度受控：一律不超过圆角白框，必要时省略/换行，绝不横向撑出 */
+  #list-card-inner, #list-card-zoomwrap, .list-frame, .cat-bar, .crumbs, .crumb-seg, .crumb-caps, .level-scroll, .sib-row {
+    max-width:100%; min-width:0; box-sizing:border-box;
+  }
+  .item, .path-row, .sib, .cat-card, .rule-item { max-width:100%; min-width:0; box-sizing:border-box; }
+  .sib { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item .val, .item .name, .path-row .nm, .rule-item .val { overflow-wrap:anywhere; word-break:break-word; }
+  /* ---------- 每级内容：不再自己滚，交给外层缩放容器 ---------- */
+  .level-scroll { overflow:visible; display:flex; flex-direction:column; gap:6px; position:relative; z-index:1; }
+  @media (prefers-reduced-motion: reduce) { *, .level-scroll, .list-frame, #list-card-zoomwrap { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }
+  .modal { position:fixed; inset:0; background:transparent; display:flex; align-items:center; justify-content:center; z-index:80; padding:16px; }
+  .modal[hidden] { display:none; }
+  /* 弹窗一律用白底卡片，文字深色，便于阅读 */
+  .modal .card { width:min(580px, 94vw); max-height:88vh; overflow:auto; background:#fff; color:#111827; border:1px solid #e5e7eb; border-radius:14px; box-shadow:0 18px 60px rgba(0,0,0,.28); padding:18px 20px; }
+  .modal .card h2 { color:#111827; }
+  .modal .card .count, .modal .card .empty { color:#4b5563; }
+  .modal .card .field { color:#374151; }
+  .modal .card .adv summary { color:#374151; }
+  .modal .card .kv { color:#374151; }
+  .modal .card input, .modal .card textarea, .modal .card select { background:#fff; color:#111827; border:1px solid #d1d5db; }
+  .modal .card input::placeholder, .modal .card textarea::placeholder { color:#9ca3af; }
+  .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:6px; }
+  .modal-actions .danger { color:#b91c1c; border-color:#fca5a5; }
+  /* 暂隐藏的操作按钮（保留 DOM 与事件绑定，后续按需放回） */
+  .hidden-admin { display:none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>统一准则</h1>
+  <span class="count" id="stat">加载中…</span>
+</header>
+<main>
+  <div style="display:grid;gap:14px">
+    <section class="card" id="list-card">
+      <div class="panel-title"><h2>准则列表</h2><span class="count" id="tree-hint"></span>
+        <span class="zoom-bar outer" title="整体缩放整个准则列表（也可 Ctrl+滚轮）">
+          <button id="ozoom-out" type="button" title="整体缩小">－</button>
+          <span id="ozoom-val">100%</span>
+          <button id="ozoom-in" type="button" title="整体放大">＋</button>
+        </span>
+      </div>
+      <div id="list-card-zoomwrap">
+      <div id="list-card-inner">
+      <div class="scheme-bar">
+        <select id="scheme-select" title="分类方案"></select>
+        <button id="btn-undo" class="small" title="撤回上一步结构修改（移动/重命名/删除/换位）" disabled>撤回</button>
+        <button id="btn-history" class="small" title="查看规则改动记录：哪条、什么时候、由什么改成什么">改动记录</button>
+        <button id="btn-assistant" title="跟助手对话：批量改规则、导入技能、查来源" style="font-size:14px;padding:8px 18px;font-weight:600">助手<span id="assist-badge" hidden style="display:inline-block;min-width:16px;height:16px;line-height:16px;padding:0 4px;margin-left:6px;border-radius:9px;background:#ef4444;color:#fff;font-size:10px;text-align:center;vertical-align:top">0</span></button>
+        <span id="read-box" style="display:inline-flex;align-items:center;gap:6px">
+          <button id="btn-read-rules" class="small" title="读取规则：扫描 AGENTS.md / 经验库 / 技能 / 插件技能 / style-packs，把未收录的准则记进库（重复跳过）" style="font-weight:600">读取规则</button>
+          <span id="read-time" style="font-size:12px;color:#6b7280"></span>
+        </span>
+        <!-- 操作按钮暂全部隐藏：元素保留（绑定仍在），后续按需逐个放回指定位置 -->
+        <button id="btn-scheme-new" class="small hidden-admin" title="新建一套分类方案">＋方案</button>
+        <button id="btn-node-root" class="small hidden-admin" title="新建顶级分类">＋大类</button>
+        <button id="btn-new" class="small primary hidden-admin">＋准则</button>
+        <button id="btn-motion" class="small hidden-admin" title="开关过渡动画">动画</button>
+        <details class="menu hidden-admin" id="menu-admin">
+          <summary title="更多操作">更多</summary>
+          <div class="menu-items">
+            <button id="btn-scheme-rename">方案改名</button>
+            <button id="btn-scheme-delete" class="danger">删除方案</button>
+            <button id="btn-scheme-reset">恢复默认方案</button>
+            <button id="btn-sync">同步到全局</button>
+            <button id="btn-reload">刷新数据</button>
+          </div>
+        </details>
+        <input id="f-keyword" placeholder="搜索名称 / 内容（清空返回分类）" style="width:220px;flex:0 0 220px" />
+        <select id="f-status">
+          <option value="active">完整可用</option>
+          <option value="">全部</option>
+          <option value="pending">待校准</option>
+          <option value="deprecated">已弃用</option>
+        </select>
+        <select id="f-coverage" title="先选维度；选中「默认生效 / 当前对话生效 / 非默认当前对话生效」后，右侧出现 是/否（是=生效，否=不生效）">
+          <option value="">全部</option>
+          <option value="default">默认生效</option>
+          <option value="session">当前对话生效</option>
+          <option value="nondefault">非默认当前对话生效</option>
+          <option value="review">待复核</option>
+        </select>
+        <select id="f-cov-yn" title="是 = 生效；否 = 不生效（取补集）" hidden>
+          <option value="yes">是</option>
+          <option value="no">否</option>
+        </select>
+        <span style="flex:1"></span>
+        <span class="zoom-bar" title="缩放准则列表（也可 Ctrl+滚轮）">
+          <button id="zoom-out" type="button" title="缩小">－</button>
+          <span id="zoom-val">100%</span>
+          <button id="zoom-in" type="button" title="放大">＋</button>
+        </span>
+      </div>
+      <div class="list-frame" id="list-frame"><div class="cat-bar" id="tree"></div></div>
+      </div>
+      </div>
+    </section>
+    <section class="card hidden-admin">
+      <h2>体检</h2>
+      <div id="audit" class="kv">—</div>
+    </section>
+  </div>
+  <div style="display:grid;gap:14px" class="hidden-admin" id="side-admin">
+    <section class="card">
+      <div class="panel-title"><h2 id="detail-title">详情</h2><span class="count" id="detail-hint"></span></div>
+      <div id="detail-empty" class="empty">点左侧任意准则查看 / 修改。</div>
+      <div id="detail-form" style="display:none">
+        <label class="field">名称 <input id="e-title" placeholder="给人看的名称，如「下载默认目录」" /></label>
+        <label class="field">内容 <textarea id="e-value" placeholder="这条准则的内容（路径 / 工具名 / 规则说明）"></textarea></label>
+        <label class="field">白话解释（给不懂的人看；可留空，让 AI 生成）
+          <textarea id="e-explain" placeholder="这条讲什么、什么时候用、和哪些准则配套、不照做会怎样"></textarea>
+        </label>
+        <label class="field">规则状态（这条规则本身是否完整可用）
+          <select id="e-status"><option value="active">生效（完整可用）</option><option value="pending">待校准</option><option value="deprecated">已弃用</option></select>
+        </label>
+        <div class="row2">
+          <label class="field">默认生效（每个对话都生效）
+            <select id="e-default" title="选「否」= 默认不生效，只在你想用时打开">
+              <option value="yes">是</option>
+              <option value="no">否（默认不生效）</option>
+            </select>
+          </label>
+          <label class="field">当前对话生效（只在本对话）
+            <select id="e-session-on" title="选「否」= 当前对话也不生效（先存着）">
+              <option value="yes">是</option>
+              <option value="no">否（当前对话不生效）</option>
+            </select>
+          </label>
+        </div>
+        <div class="count" id="e-coverage-hint" style="margin:-4px 0 8px">
+          默认=每个对话都生效；当前对话=只在本对话生效。两个都选「否」= 默认不生效、当前对话也不生效（先存着，用的时候再打开）。
+        </div>
+        <div class="count" id="e-session-box" style="margin:-4px 0 10px"></div>
+        <details class="adv">
+          <summary>高级信息（英文标识 / 来源 / 优先级 / 更新时间）</summary>
+          <div style="margin-top:10px">
+            <label class="field">英文标识（一般不用改） <input id="e-key" placeholder="如 paths.downloads" /></label>
+            <div class="row2">
+              <label class="field">来源 <input id="e-source" placeholder="如 主人确认 / AGENTS.md" /></label>
+              <label class="field">优先级 <input id="e-priority" type="number" placeholder="默认 100 / 项目 300" /></label>
+            </div>
+            <div class="kv" id="e-meta" style="margin-bottom:10px"></div>
+          </div>
+        </details>
+        <div class="toolbar">
+          <button id="btn-save" class="primary">保存</button>
+          <button id="btn-ai-edit" class="ghost" title="让助手帮你改这条准则">AI 帮我修改</button>
+          <button id="btn-delete" class="danger" style="display:none">删除</button>
+          <button id="btn-cancel" class="ghost">取消</button>
+          <span id="save-hint" class="count"></span>
+        </div>
+      </div>
+    </section>
+    <section class="card">
+      <h2>健康报告</h2>
+      <div class="toolbar">
+        <input id="r-project" placeholder="项目目录（可选）" style="flex:1" />
+        <button id="btn-report" class="small">生成</button>
+      </div>
+      <div id="report" class="kv">—</div>
+    </section>
+    <section class="card">
+      <h2>备份 / 回滚</h2>
+      <div class="toolbar"><button id="btn-backups" class="small">列出备份</button></div>
+      <div id="backups" class="kv">—</div>
+    </section>
+  </div>
+</main>
+<div class="modal" id="detail-modal" hidden>
+  <div class="card" style="position:relative">
+    <button id="dm-close" class="ghost small dm-close" title="关闭详情">关闭</button>
+    <h2 id="dm-title" style="padding-right:56px">详情</h2>
+    <div id="dm-hint" class="count" style="margin-bottom:8px"></div>
+    <div id="dm-body"></div>
+    <div id="dm-extra" class="dm-extra"></div>
+    <div id="dm-topo-wrap" style="margin-top:14px;border-top:1px solid #e5e7eb;padding-top:10px">
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px">
+        <strong style="font-size:13px;color:#111827">完整流程拓扑</strong>
+        <span id="dm-topo-hint" class="count"></span>
+        <span style="flex:1"></span>
+        <button id="btn-topo-window" class="small" title="弹窗看完整结构（滚轮缩放、拖动平移、点空白处关闭）">查看完整结构</button>
+      </div>
+      <div id="dm-topo" class="topo"></div>
+    </div>
+  </div>
+</div>
+<div class="modal" id="topo-modal" hidden>
+  <div class="card topo-modal-card">
+    <div id="topo-view" class="topo-graph"></div>
+    <div class="topo-modal-tip">滚轮缩放 · 拖动平移 · 点空白处或按 Esc 关闭</div>
+  </div>
+</div>
+<div class="modal" id="history-modal" hidden>
+  <div class="card" style="width:min(780px,94vw)">
+    <h2 id="history-title">改动记录</h2>
+    <div id="history-sub" class="count" style="margin-bottom:8px"></div>
+    <div id="history-list" class="history-list"></div>
+    <div class="modal-actions"><button id="history-close" class="ghost">关闭</button></div>
+  </div>
+</div>
+<div class="modal" id="move-modal" hidden>
+  <div class="card" style="width:min(560px,94vw)">
+    <h2 id="move-title">移动到…</h2>
+    <div id="move-crumbs" class="move-crumbs"></div>
+    <div id="move-list" class="move-list"></div>
+    <div id="move-target" class="count" style="margin:2px 0 10px"></div>
+    <div class="modal-actions">
+      <button id="move-ok" class="primary">确定</button>
+      <button id="move-cancel" class="ghost">取消</button>
+    </div>
+  </div>
+</div>
+<div class="modal" id="create-modal" hidden>
+  <div class="card">
+    <h2 id="cm-title">新建</h2>
+    <label class="field" id="cm-name-field">名称 <input id="cm-name" placeholder="输入名称" /></label>
+    <label class="field" id="cm-value-field">内容 <textarea id="cm-value" placeholder="这条准则的内容（路径 / 工具名 / 规则说明）"></textarea></label>
+    <div id="cm-ai" style="display:flex;gap:6px;margin-bottom:8px">
+      <input id="cm-ai-text" placeholder="不会写？用一句话描述，点「起草」自动填" style="flex:1" />
+      <button id="cm-ai-draft" class="small">起草</button>
+    </div>
+    <div id="cm-hint" class="count" style="color:var(--danger)"></div>
+    <div class="modal-actions">
+      <button id="cm-cancel" class="ghost">取消</button>
+      <button id="cm-ok" class="primary">确定</button>
+    </div>
+  </div>
+</div>
+<div class="modal" id="ask-modal" hidden>
+  <div class="card" style="width:min(440px,94vw)">
+    <h2 id="ask-title">请确认</h2>
+    <p id="ask-msg" class="count" style="margin:0 0 8px;color:#374151"></p>
+    <label class="field" id="ask-field">名称 <input id="ask-input" /></label>
+    <div class="modal-actions">
+      <button id="ask-cancel" class="ghost">取消</button>
+      <button id="ask-ok" class="primary">确定</button>
+    </div>
+  </div>
+</div>
+<div class="modal" id="assistant-modal" hidden>
+  <div class="card" style="width:min(640px,94vw);max-height:84vh;display:flex;flex-direction:column;gap:10px;border-radius:16px;padding:18px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <h2 style="margin:0;font-size:16px">统一准则助手</h2>
+      <span class="count" id="assistant-state" style="margin:0;flex:1;text-align:right;color:#6b7280"></span>
+      <button id="assistant-close" class="ghost small" title="关闭（Esc）">×</button>
+    </div>
+    <div id="assistant-msgs" style="flex:1;min-height:200px;max-height:52vh;overflow:auto;padding:6px 2px"></div>
+    <div style="display:flex;gap:8px;align-items:flex-end;padding-top:10px;border-top:1px solid #eef0f3">
+      <textarea id="assistant-input" rows="1" style="flex:1;resize:none;min-height:42px;max-height:140px;padding:10px 12px;border-radius:12px;border:1px solid #e5e7eb;font-size:13px" placeholder="直接说要做的事：校准待复核 / 检查准则库 / 把 ppt 规则设成本对话生效…"></textarea>
+      <button id="assistant-send" class="primary" style="height:42px;padding:0 20px;border-radius:12px">发送</button>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span class="count" style="margin:0">Ctrl+Enter 发送 · Enter 换行</span>
+      <button id="assistant-reset" class="ghost small">新会话</button>
+    </div>
+  </div>
+</div>
+<script src="/dsh-rules/search.js"></script>
+<script>
+  // 白屏诊断：任何脚本错误都亮红条，而不是静默空白
+  (function () {
+    const show = (msg) => {
+      try {
+        let el = document.getElementById('fatal-bar');
+        if (!el) {
+          el = document.createElement('div');
+          el.id = 'fatal-bar';
+          el.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:9999;background:#b91c1c;color:#fff;font-size:12px;line-height:1.4;padding:6px 10px;white-space:pre-wrap;max-height:40vh;overflow:auto';
+          document.body.appendChild(el);
+        }
+        el.textContent = '页面脚本出错（把这条发给助手）：\n' + msg;
+      } catch {}
+    };
+    window.addEventListener('error', (e) => show((e.message || 'error') + (e.filename ? '\n' + e.filename + ':' + e.lineno : '')));
+    window.addEventListener('unhandledrejection', (e) => show('unhandled rejection: ' + ((e.reason && (e.reason.stack || e.reason.message)) || e.reason)));
+  })();
+  const CATS = [['paths','路径习惯'],['install','安装与下载'],['tools','工具选择'],['style','产出风格'],['safety','安全红线'],['workflow','工作方式'],['model','模型与预算'],['notify','通知'],['skill','技能学习'],['imported','其他 / 导入']];
+  const CAT_LABEL = Object.fromEntries(CATS);
+  // 给小白看的类别说明（用在白话解释里）
+  const CAT_HINT = {
+    paths: '讲文件/目录该放哪儿，比如下载和安装默认放哪。',
+    install: '讲软件怎么装、从哪装、装完要不要校验。',
+    tools: '讲做某类任务时优先用哪个工具。',
+    style: '讲产出物的风格、格式、长度这类要求。',
+    safety: '讲不能碰的红线：删除、权限、隐私、不可逆操作。',
+    workflow: '讲做事的顺序和习惯，比如先查证据再下结论。',
+    model: '讲用哪个模型、怎么省 token / 控制成本。',
+    notify: '讲什么时候该通知你、用什么方式通知。',
+    skill: '讲怎么学新技能、装插件前要做什么检查。',
+    imported: '从别处导入的准则，还没细分类。',
+  };
+  const DOMAIN_LABEL = {
+    ppt: '做 PPT', paper: '写论文', report: '写报告', diagram: '画图表', office: '办公文档',
+    blender: '3D/Blender 建模', coding: '写代码', skill: '技能与插件', bili: 'B站运营',
+    research: '科研', audio: '音频', video: '视频', image: '图片', web: '网页', data: '数据处理',
+    teaching: '教学', harness: 'DSH 本身', animation: '动画', 'style-packs': '风格包', scheduling: '定时任务',
+  };
+  const LABELS = {
+    'paths.downloads':'下载默认目录','paths.install':'软件安装目录','paths.deliverables':'交付物目录','paths.scratch':'临时文件目录','paths.models':'模型文件目录',
+    'install.prefer_portable':'优先便携版','install.user_scope':'安装到当前用户','install.github_proxy':'GitHub 下载代理','install.verify_checksum':'下载后校验文件',
+    'tools.ppt':'做 PPT 用哪个工具','tools.paper':'写论文用哪个工具','tools.diagram':'画图表用哪个工具','tools.search':'检索资料用哪个工具',
+    'style.ppt':'PPT 默认风格','style.paper':'论文默认风格','style.report':'报告默认风格',
+    'safety.delete_confirm':'删除/覆盖前先确认','safety.no_global_npm':'禁止全局安装 npm 包','safety.approval_first':'重要操作先确认',
+    'workflow.deliverables_dir':'工作交付目录','workflow.report_style':'汇报风格','workflow.verify_before_claim':'先证据后结论',
+    'model.offpeak_only_autonomy':'自主上网只走低谷时段',
+    'skill.auto_install_min_score':'技能自动安装的最低分','skill.daily_budget':'每天技能学习配额',
+    'agent.reply_max_chars':'评论回复字数上限','agent.ack_before_work':'派活先确认再动手',
+  };
+  const STATUS_LABEL = { active:'生效', pending:'待校准', deprecated:'已弃用' };
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const humanize = (key) => String(key ?? '').split('.').slice(-1)[0].replace(/[_-]+/g, ' ') || String(key ?? '');
+  const labelOf = (r) => {
+    if (!r) return '';
+    if (r.title) return r.title;
+    if (LABELS[r.key]) return LABELS[r.key];
+    const m = String(r.key || '').match(/^paths\.convention_(\d+)$/);
+    return m ? '路径约定 ' + m[1] : humanize(r.key);
+  };
+  let all = [];
+  let schemes = [];
+  let tree = null;
+  let schemeId = '';
+  let nodeMeta = new Map();   // 节点 → { parentId, index }，拖拽同级换位用
+  // 排序方式（类似资源管理器）：按名称 / 按筛选后的剩余条数（空文件夹排最后）/ 手动顺序
+  const SORT_OPTS = [['manual', '默认'], ['name-asc', '名称升序'], ['name-desc', '名称降序'], ['count-desc', '条数从多到少'], ['count-asc', '条数从少到多']];
+  let sortMode = localStorage.getItem('dsh-rules:sort') || 'manual';
+  const sortLabel = () => (SORT_OPTS.find(([k]) => k === sortMode) || SORT_OPTS[0])[1];
+  let hostVersion = '', hostFeatures = null;   // 宿主插件版本握手：界面新/宿主旧时给出提示
+  let sourceGate = null;   // 来源闸口：新学/新装的技能有没有被采集
+  let selectedNode = null;   // 兼容保留：当前查看的节点（用于详情/拖拽状态）
+  let drillPath = [];        // 逐级下钻路径（根 → 当前分类）
+  let foldedIdx = null;      // 折叠状态：< idx 的层段 + idx 层的胶囊行被收起（跨渲染保留）
+  let pendingScrollTop = 0;  // 切换层级前记录的外框滚动位置，用于平滑对齐
+  const detailHome = $('detail-form').parentNode;   // 详情表单的归属位置（关闭弹窗后放回）
+  let unassignedView = false;
+  // 当前对话（面板 iframe 由宿主传入 ?session=<id>）：用来判断「当前对话是否已生效」
+  const SESSION_TAG = String(new URLSearchParams(location.search).get('session') || '').trim();
+  let sessionActiveKeys = new Set();
+  async function loadSessionState() {
+    if (!SESSION_TAG) return;
+    try {
+      const j = await api('/dsh-rules/session?session=' + encodeURIComponent(SESSION_TAG));
+      sessionActiveKeys = new Set(j.activeKeys || []);
+    } catch { sessionActiveKeys = new Set(); }
+  }
+  function covLabel(r) {
+    // 「生效」= 规则本身完整可用；待校准/已弃用一律显示不可用，避免和"适用面"混淆
+    if (r.status !== 'active') return '不可用'
+    if ((r.coverage || 'default') !== 'local') return '默认生效';
+    return sessionActiveKeys.has(r.key) ? '当前对话生效' : '当前对话未生效';
+  }
+  let selected = null;      // { key, scope }
+  let creating = false;
+  let pendingRuleTarget = false;   // 这次新建准则是否要归入指定文件夹
+  let pendingRuleNode = null;
+
+  async function api(path, body) {
+    const opt = body === undefined ? {} : { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(body) };
+    const r = await fetch(path, opt);
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.ok === false) throw new Error(j.error || ('HTTP ' + r.status));
+    return j;
+  }
+  function fillSelects() { /* 类别字段已移除：类别由文件夹决定，不再手选 */ }
+  // ---------- 分类树 ----------
+  function nodeMap() {
+    const m = new Map();
+    const walk = (nodes, pathTitles, parentIds) => {
+      for (const n of nodes || []) {
+        const pathIds = [...parentIds, n.id];
+        m.set(n.id, { ...n, path: pathTitles, pathIds, depth: pathTitles.length });
+        walk(n.children, [...pathTitles, n.title], pathIds);
+      }
+    };
+    if (tree) walk(tree.roots, [], []);
+    return m;
+  }
+  function findNode(id) { return nodeMap().get(id) || null; }
+  function subtreeIds(id) {
+    const out = new Set([id]);
+    const walk = (nodes) => { for (const n of nodes || []) { out.add(n.id); walk(n.children); } };
+    const node = findNode(id);
+    if (node) walk(node.children);
+    return out;
+  }
+  function renderSchemes() {
+    const sel = $('scheme-select');
+    if (sel) {
+      sel.innerHTML = schemes.map((s) => `<option value="${esc(s.id)}" ${s.id === schemeId ? 'selected' : ''}>${esc(s.title)}（${s.total}${s.builtin ? ' · 内置' : ''}）</option>`).join('');
+    }
+    const cur = schemes.find((s) => s.id === schemeId) || {};
+    if ($('btn-scheme-delete')) $('btn-scheme-delete').disabled = Boolean(cur.builtin);
+    if ($('btn-scheme-reset')) $('btn-scheme-reset').style.display = cur.builtin ? '' : 'none';
+    if ($('tree-hint')) $('tree-hint').textContent = `分类方案 ${schemes.length} 套 · 当前「${cur.title || ''}」· 已归类 ${tree ? tree.assigned : all.length}/${tree ? tree.total : all.length}`;
+  }
+  function ruleCard(r, idx = 0) {
+    const active = selected && selected.key === r.key && selected.scope === r.scope;
+    return `<div class="item rule-item ${active ? 'active' : ''}" data-key="${esc(r.key)}" data-scope="${esc(r.scope)}" data-node="${esc(r.nodeId || '')}" draggable="true" style="--i:${idx}" title="${esc(r.value)}">
+      <span class="name">${esc(labelOf(r))}</span>
+      <span class="tags">
+        <span class="chip">${esc(CAT_LABEL[r.category] || r.category)}</span>
+        <span class="chip" title="${covLabel(r)}">${covLabel(r)}</span>
+        <span class="chip ${esc(r.status)}">${esc(STATUS_LABEL[r.status] || r.status)}</span>
+        ${(String(r.value).trim().length < 12 && !r.explain) ? '<span class="chip warn" title="内容偏短、可能看不懂；点开详情可以看白话解释或让 AI 补全">内容较短</span>' : ''}
+        ${r.needsReview ? `<span class="chip warn" title="适用面推断置信不足，当前按推断值生效；用 rules_coverage op=review/accept 处理">待复核</span>` : ''}
+        <span class="c-actions"><button data-rule-move="${esc(r.key)}" title="移出分类：选择移动到哪个文件夹（或未分类）">移出</button></span>
+      </span>
+      <span class="val">${esc(String(r.value).replace(/\s+/g,' ').slice(0, 90))}${String(r.value).length > 90 ? '…' : ''}</span>
+    </div>`;
+  }
+  // 排序菜单（点「排序」弹出，可直接选；不再逐个循环）
+  let sortMenuEl = null;
+  function closeSortMenu() {
+    if (sortMenuEl) { try { sortMenuEl.remove() } catch {} sortMenuEl = null }
+    document.removeEventListener('mousedown', onSortDocDown, true);
+    window.removeEventListener('resize', closeSortMenu);
+    window.removeEventListener('scroll', closeSortMenu, true);
+  }
+  function onSortDocDown(ev) {
+    if (!sortMenuEl) return;
+    if (sortMenuEl.contains(ev.target)) return;
+    if (ev.target.closest && ev.target.closest('[data-sort]')) return;
+    closeSortMenu();
+  }
+  function openSortMenu(btn) {
+    closeSortMenu();
+    const menu = document.createElement('div');
+    menu.className = 'sort-menu';
+    menu.innerHTML = SORT_OPTS.map(([k, label]) => `<button data-sort-opt="${k}" class="${k === sortMode ? 'on' : ''}">${esc(label)}</button>`).join('');
+    document.body.appendChild(menu);
+    const r = btn.getBoundingClientRect();
+    menu.style.left = Math.max(8, Math.min(window.innerWidth - 200, Math.round(r.left))) + 'px';
+    menu.style.top = Math.round(r.bottom + 6) + 'px';
+    menu.addEventListener('click', (ev) => {
+      const opt = ev.target.closest ? ev.target.closest('[data-sort-opt]') : null;
+      if (!opt) return;
+      sortMode = opt.dataset.sortOpt;
+      localStorage.setItem('dsh-rules:sort', sortMode);
+      closeSortMenu();
+      renderTree({ resetScroll: false });
+    });
+    sortMenuEl = menu;
+    document.addEventListener('mousedown', onSortDocDown, true);
+    window.addEventListener('resize', closeSortMenu);
+    window.addEventListener('scroll', closeSortMenu, true);
+  }
+  function renderTree({ resetScroll = true } = {}) {
+    closeSortMenu();
+    const box = $('tree');
+    if (!box) return;
+    if (!tree) { box.innerHTML = ''; return; }
+    const kw = $('f-keyword').value.trim().toLowerCase();
+    const st = $('f-status').value;
+    const cov = $('f-coverage') ? $('f-coverage').value : '';
+    const yn = $('f-cov-yn') && !$('f-cov-yn').hidden ? $('f-cov-yn').value : 'yes';
+    const FZ = window.DshRulesSearch || null;
+    let fuzzyUsed = false;
+    const hayOf = (r) => (labelOf(r) + ' ' + r.value + ' ' + (CAT_LABEL[r.category] || '') + ' ' + (r.tags || []).join(' ') + ' ' + (r.key || '') + ' ' + (r.source || '') + ' ' + covLabel(r)).toLowerCase();
+    const match = (r) => {
+      if (st && r.status !== st) return false;
+      if (cov === 'review') { if (!r.needsReview) return false; }
+      else if (cov === 'default') {
+        // 默认生效：是 = 默认规则；否 = 非默认（局部规则）
+        const isDefault = (r.coverage || 'default') === 'default';
+        if (yn === 'yes' ? !isDefault : isDefault) return false;
+      }
+      else if (cov === 'session') {
+        // 当前对话生效：是 = 可用且（默认规则 或 本对话已打开的局部规则）；否 = 取补集
+        const isLocal = (r.coverage || 'default') === 'local';
+        const effective = r.status === 'active' && (!isLocal || sessionActiveKeys.has(r.key));
+        if (yn === 'yes' ? !effective : effective) return false;
+      }
+      else if (cov === 'nondefault') {
+        // 非默认当前对话生效：是 = 可用、本对话已打开、且不是默认规则；否 = 取补集
+        const isLocal = (r.coverage || 'default') === 'local';
+        const usableLocal = isLocal && r.status === 'active' && sessionActiveKeys.has(r.key);
+        if (yn === 'yes' ? !usableLocal : usableLocal) return false;
+      }
+      else if (cov) { if ((r.coverage || 'default') !== cov) return false; }
+      if (!kw) return true;
+      const hay = hayOf(r);
+      if (hay.includes(kw)) return true;
+      // 模糊匹配：拼写容错 / 字符顺序 / 多词（blander → blender）
+      let hit = false;
+      if (FZ && typeof FZ.fuzzyHit === 'function') hit = FZ.fuzzyHit(kw, hay);
+      else hit = kw.split(/\s+/).every((t) => hay.includes(t));
+      if (hit) fuzzyUsed = true;
+      return hit;
+    };
+    // 计数跟随筛选：所有节点上的「N 条」都只统计当前筛选后的规则
+    const shownRules = all.filter(match);
+    const ownOf = (nodeId) => shownRules.filter((r) => (r.nodeId || null) === (nodeId || null)).length;
+    const totalOf = (n) => ownOf(n.id) + (n.children || []).reduce((s, c) => s + totalOf(c), 0);
+    // 展示排序：不改变树数据，只改这一屏的顺序；条数一律按"当前筛选后剩余"算，空分类永远排最后
+    const sortNodes = (nodes) => {
+      const arr = [...(nodes || [])];
+      if (sortMode === 'manual') return arr;
+      if (sortMode === 'name-asc' || sortMode === 'name-desc') {
+        arr.sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'zh'));
+        if (sortMode === 'name-desc') arr.reverse();
+        return arr;
+      }
+      const dir = sortMode === 'count-desc' ? -1 : 1;
+      const byName = (a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'zh');
+      const filled = arr.filter((n) => totalOf(n) > 0).sort((a, b) => dir * (totalOf(a) - totalOf(b)) || byName(a, b));
+      const empty = arr.filter((n) => totalOf(n) === 0).sort(byName);
+      return [...filled, ...empty];
+    };
+    // 节点顺序元数据：拖拽到上/下边缘 → 同级换位
+    nodeMeta = new Map();
+    const collectMeta = (nodes, parentId) => (nodes || []).forEach((n, i) => { nodeMeta.set(n.id, { parentId: parentId || null, index: i }); collectMeta(n.children, n.id) });
+    collectMeta(tree.roots, null);
+    // 规则顺序：先按 scheme.order 显式顺序，其余按类别/名称
+    const orderedRules = (nodeId) => {
+      const ord = (tree.order || {})[nodeId || '__root__'] || [];
+      const pos = new Map(ord.map((k, i) => [k, i]));
+      const list = all.filter((r) => (r.nodeId || null) === (nodeId || null)).filter(match)
+        .sort((a, b) => {
+          const ia = pos.has(a.key) ? pos.get(a.key) : Infinity, ib = pos.has(b.key) ? pos.get(b.key) : Infinity;
+          if (ia !== ib) return ia - ib;
+          return (a.category.localeCompare(b.category)) || labelOf(a).localeCompare(labelOf(b), 'zh');
+        });
+      if (sortMode === 'name-asc' || sortMode === 'name-desc') {
+        list.sort((a, b) => labelOf(a).localeCompare(labelOf(b), 'zh'));
+        if (sortMode === 'name-desc') list.reverse();
+      }
+      return list;
+    };
+    const rulesOf = orderedRules;
+    const catCard = (n, idx = 0) => {
+      const kids = n.children || [];
+      return `<div class="item cat-card" data-node="${esc(n.id)}" draggable="true" style="--i:${idx}" title="${esc(n.desc || n.title)}">
+        <span class="name"><span class="chev">▶</span><span class="c-title">${esc(n.title)}</span></span>
+        <span class="tags">
+          <span class="chip">分类</span>
+          <span class="chip">${totalOf(n)} 条</span>
+          <span class="c-actions"><button data-act="rename" title="重命名">改名</button><button data-act="move" title="移出分类：选择移动到哪个分类（或顶级）">移出</button><button data-act="top" title="移到顶级（放到最前）">顶层</button><button data-act="delete" title="删除（含子类）">删除</button></span>
+        </span>
+        <span class="val">${kids.length ? `${kids.length} 个子类 · ${ownOf(n.id)} 条直属 · 共 ${totalOf(n)} 条，点击展开` : `${ownOf(n.id)} 条准则，点击查看`}</span>
+      </div>`;
+    };
+    const cards = (nodes) => (nodes || []).map((n, i) => catCard(n, i)).join('');
+    // 每级行首的新建入口：和收起的同级项完全同款胶囊，只是文案不同
+    const addButtons = (parentId) =>
+      `<button class="sib add-btn" data-add="folder" data-add-to="${parentId ? esc(parentId) : ''}" title="新建文件夹">＋ 新建文件夹</button>` +
+      `<button class="sib add-btn" data-add="rule" data-add-to="${parentId ? esc(parentId) : ''}" title="新建准则">＋ 新建准则</button>` +
+      `<button class="sib sort-btn add-btn" data-sort="toggle" data-sort-to="${parentId ? esc(parentId) : 'root'}" title="选择排序方式（名称 / 剩余条数 / 手动；空分类排最后）">排序：${esc(sortLabel())}</button>`;
+    const topParts = [];
+    const levelParts = [];
+    const nodeTitle = (id) => findNode(id)?.title || '';
+    const statBase = `${shownRules.length} 条准则${shownRules.length !== all.length ? `（共 ${all.length}，已筛选）` : ''} · ${drillPath.length ? '分类：' + drillPath.map(nodeTitle).join(' / ') : (kw ? '搜索' : '全部分类')}`;
+    const reviewCount = all.filter((r) => r.needsReview).length;
+    const reviewExtra = reviewCount ? ` · 待复核 ${reviewCount} 条适用面` : '';
+    const srcNew = sourceGate ? (sourceGate.new || []) : [];
+    const srcChanged = sourceGate ? (sourceGate.changed || []) : [];
+    const srcRemoved = sourceGate ? (sourceGate.removed || 0) : 0;
+    const srcExtra = (srcNew.length || srcChanged.length || srcRemoved)
+      ? ` · 来源：新 ${srcNew.length} / 变化 ${srcChanged.length} / 消失 ${srcRemoved}（未采集，rules_sources op=plan）`
+      : '';
+    $('stat').textContent = (!hostVersion || !hostFeatures?.undo)
+      ? statBase + reviewExtra + srcExtra + ' · 界面已更新但宿主插件是旧版（撤回/换位不可用），请重启 DSH'
+      : statBase + reviewExtra + srcExtra;
+    $('stat').title = (srcNew.length || srcChanged.length)
+      ? '新来源：' + [...srcNew, ...srcChanged].map((s) => s.name).join('、')
+      : '';
+    let level = tree.roots || [];
+    if (kw) {
+      const hits = all.filter(match);
+      topParts.push(`<div class="path-row" data-reset="1" title="清空搜索，返回分类"><span class="tri">▶</span><span class="p-title">搜索「${esc(kw)}」</span><span class="count">${hits.length} 条${fuzzyUsed ? ' · 模糊匹配' : ''} · 点击返回</span></div>`);
+      levelParts.push(hits.length ? hits.map((r, i) => ruleCard(r, i)).join('') : '<div class="empty">没有匹配的准则</div>');
+    } else if (unassignedView) {
+      const rs = rulesOf(null);
+      topParts.push(`<div class="path-row" data-back="root" title="点击返回分类"><span class="tri">▶</span><span class="p-title">未分类</span><span class="count">${rs.length} 条 · 点击返回</span></div>`);
+      levelParts.push(rs.length ? rs.map((r, i) => ruleCard(r, i)).join('') : '<div class="empty">所有准则都已归类</div>');
+    } else {
+      for (let i = 0; i < drillPath.length; i++) {
+        const node = level.find((n) => n.id === drillPath[i]);
+        if (!node) { drillPath = drillPath.slice(0, i); break; }
+        const sibs = sortNodes(level.filter((n) => n.id !== node.id));
+        const parentId = i > 0 ? drillPath[i - 1] : null;
+        // 这一级的行：＋新建 在最前，收起的小三角接在后面
+        topParts.push(`<div class="crumb-seg" data-seg="${i}"><div class="crumb-caps"><div class="sib-row">${addButtons(parentId)}${sibs.map((n) => `<button class="sib" data-goto="${esc(n.id)}" data-node="${esc(n.id)}" data-level="${i}" title="切换到「${esc(n.title)}」">▶ ${esc(n.title)} <span class="count">${totalOf(n)}</span></button>`).join('')}</div></div>` +
+          `<div class="path-row" data-back="${i}" data-node="${esc(node.id)}" title="点击收起，返回上一级"><span class="fold-handle" data-fold-seg="${i}" title="折叠上方所有内容到顶部"></span><span class="tri">▶</span><span class="p-title">${esc(node.title)}</span><span class="count">${ownOf(node.id)}/${totalOf(node)} 条 · 点击收起</span></div></div>`);
+        level = node.children || [];
+      }
+      const cur = drillPath.length ? findNode(drillPath[drillPath.length - 1]) : null;
+      if (cur && (cur.children || []).length) {
+        levelParts.push(`<div class="sib-row">${addButtons(cur.id)}</div>`);
+        levelParts.push(cards(sortNodes(cur.children)));
+        // 这个文件夹里除了子文件夹，也可能直接放着准则：一起列出来
+        const ownRules = rulesOf(cur.id);
+        if (ownRules.length) {
+          levelParts.push(`<div class="rules-head">这个文件夹里的准则（${ownRules.length} 条）</div>`);
+          levelParts.push(ownRules.map((r, i) => ruleCard(r, i)).join(''));
+        }
+      } else if (cur) {
+        levelParts.push(`<div class="sib-row">${addButtons(cur.id)}</div>`);
+        const rs = rulesOf(cur.id);
+        levelParts.push(rs.length ? rs.map((r, i) => ruleCard(r, i)).join('') : '<div class="empty">该分类下还没有准则</div>');
+      } else {
+        levelParts.push(`<div class="sib-row">${addButtons(null)}</div>`);
+        levelParts.push(cards(sortNodes(tree.roots)));
+        const unTotal = ownOf(null);
+        levelParts.push(`<div class="item cat-card unassigned-card" data-unassigned="1" style="--i:${tree.roots.length}" title="查看未分类准则">
+          <span class="name"><span class="chev">▶</span><span class="c-title">未分类</span></span>
+          <span class="tags"><span class="chip">未分类</span><span class="chip">${unTotal} 条</span></span>
+          <span class="val">不属于任何分类的准则 · 点击查看</span>
+        </div>`);
+      }
+    }
+    box.innerHTML = `<div class="crumbs-restore" hidden><button class="unfold-btn" data-unfold-all title="展开上方层级">⏷</button></div><div class="crumbs">${topParts.join('')}</div>` + `<div class="level-scroll">${levelParts.join('') || '<div class="empty">还没有大类，点「＋大类」</div>'}</div>`;
+    // 折叠状态跨渲染保留：<idx 的层段 + idx 层的胶囊行保持收起
+    if (foldedIdx !== null && foldedIdx >= drillPath.length) foldedIdx = null;
+    if (foldedIdx !== null) {
+      box.querySelectorAll('.crumb-seg').forEach((s) => {
+        const n = Number(s.dataset.seg);
+        if (n < foldedIdx) { s.classList.add('collapsed'); s.style.maxHeight = '0px'; }
+        else if (n === foldedIdx) { const caps = s.querySelector(':scope > .crumb-caps'); if (caps) { caps.classList.add('collapsed'); caps.style.maxHeight = '0px'; } }
+      });
+      const restore = box.querySelector('.crumbs-restore'); if (restore) restore.hidden = false;
+    }
+    const sc = $('list-card-zoomwrap');
+    if (sc && resetScroll) {
+      // 平滑对齐：把当前选中栏（最后一个路径行）的顶边滚到外框顶边
+      const rows = box.querySelectorAll('.path-row');
+      const curRow = rows.length ? rows[rows.length - 1] : null;
+      const target = curRow
+        ? Math.max(0, curRow.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop)
+        : 0;
+      const maxTop = Math.max(0, sc.scrollHeight - sc.clientHeight);
+      sc.scrollTop = Math.min(pendingScrollTop, maxTop);
+      pendingScrollTop = 0;
+      requestAnimationFrame(() => sc.scrollTo({ top: Math.min(target, maxTop), behavior: 'smooth' }));
+    }
+  }
+  // ---------- 过渡引擎：整块视图交叉淡出 + 三角旋转（不做逐元素克隆，避免文字重影/老花眼） ----------
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  let morphBusy = false;
+  let motionOff = false;                      // 动画开关（按钮已隐藏，不再读旧状态，避免残留 off 导致全无动画）
+  const motionOK = () => (!window.matchMedia || !window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const MORPH_MS = 560;                              // 柔和：时长再拉长
+  const MORPH_EASE = 'cubic-bezier(.33,.1,.15,1)';   // 起步缓、收尾极软（先快后慢但不过冲）
+  const ROT_MS = 380;                                // 三角形旋转单独时长
+  const treeKey = (el) => {
+    if (el.dataset.add) return 'a:' + el.dataset.add + ':' + (el.dataset.addTo || 'root');
+    if (el.dataset.sort) return 'a:sort:' + (el.dataset.sortTo || 'root');
+    if (el.dataset.unassigned) return 'n:__unassigned__';
+    if (el.dataset.node) return 'n:' + el.dataset.node;
+    if (el.dataset.key) return 'r:' + el.dataset.key + '|' + el.dataset.scope;
+    return null;
+  };
+  function snapshotTree() {
+    const box = $('tree'); const map = new Map();
+    if (!box) return map;
+    box.querySelectorAll('[data-add],[data-sort],[data-node],[data-unassigned],[data-key]').forEach((el) => {
+      const key = treeKey(el); if (!key || map.has(key)) return;
+      const r = el.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) return;
+      const seg = el.closest ? el.closest('.crumb-seg') : null;
+      const depth = seg ? Number(seg.dataset.seg) : 99;
+      map.set(key, { rect: r, cls: el.className, bg: getComputedStyle(el).backgroundColor, depth });
+    });
+    return map;
+  }
+  function morphTransition(prev, { anchor = null, collapseTarget = null, prevPath = [] } = {}) {
+    const box = $('tree');
+    if (!box || !motionOK()) return;
+    let layer = $('morph-layer');
+    if (!layer) { layer = document.createElement('div'); layer.id = 'morph-layer'; layer.className = 'morph-layer'; document.body.appendChild(layer); }
+    const next = new Map();
+    box.querySelectorAll('[data-add],[data-sort],[data-node],[data-unassigned],[data-key]').forEach((el) => { const k = treeKey(el); if (k && !next.has(k)) next.set(k, el); });
+    // 退回 v0.11.6 的收起行为：消失项同时向父栏折叠，不再做分阶段/倒序排期
+    const ghostTiming = () => ({ duration: MORPH_MS, easing: MORPH_EASE });
+    // 消失的项 → 向父级折叠（v0.11.3 行为）
+    prev.forEach((old, key) => {
+      if (next.has(key)) return;
+      const g = document.createElement('div');
+      g.className = 'morph-ghost';
+      g.style.left = old.rect.left + 'px'; g.style.top = old.rect.top + 'px';
+      g.style.width = old.rect.width + 'px'; g.style.height = old.rect.height + 'px';
+      g.innerHTML = '<div style="width:100%;height:100%;border:1px solid var(--line);border-radius:10px;background:var(--card);opacity:.9"></div>';
+      layer.appendChild(g);
+      const timing = ghostTiming();
+      let frames;
+      if (collapseTarget) {
+        const sx = Math.max(.05, collapseTarget.width / old.rect.width), sy = Math.max(.05, collapseTarget.height / old.rect.height);
+        const dx = collapseTarget.left - old.rect.left, dy = collapseTarget.top - old.rect.top;
+        frames = [{ transform: 'none', opacity: 1 }, { transform: `translate(${dx}px,${dy}px) scale(${sx},${sy})`, opacity: 0 }];
+      } else frames = [{ opacity: 1 }, { opacity: 0 }];
+      const a = g.animate(frames, timing);
+      a.onfinish = () => g.remove(); a.oncancel = () => g.remove();
+    });
+    // 保留项：旧位置/尺寸 → 新位置/尺寸（胖↔瘦形变 + 位置移动）；新增项：从点击/父级位置长出来
+    // 分段顺序：被点项立刻上移变瘦 → 同级卡片依次收成胶囊 → 子项自上而下依次展开 → 最后弹出新建胶囊
+    let capIdx = 0, childIdx = 0;
+    const CAP_STEP = 55, CHILD_STEP = 60, CHILD_START = 380, ADD_DELAY = 780;
+    next.forEach((el, key) => {
+      const old = prev.get(key);
+      const to = el.getBoundingClientRect(); if (to.width < 2) return;
+      const st = { duration: MORPH_MS, easing: MORPH_EASE, fill: 'both' };
+      if (old) {
+        const dx = old.rect.left - to.left, dy = old.rect.top - to.top;
+        // 只缩不放（沿用上一版动画）：避免展开时先放大再缩小
+        const sx = Math.min(1, old.rect.width / to.width);
+        const sy = Math.min(1, old.rect.height / to.height);
+        const newBg = getComputedStyle(el).backgroundColor;
+        // 选中蓝底的渐隐/渐显：背景色从旧值过渡到新值（胖↔瘦时蓝色慢慢变白 / 变蓝）
+        const bgFrames = old.bg && old.bg !== newBg ? [{ backgroundColor: old.bg }, { backgroundColor: newBg }] : null;
+        const isPath = el.classList.contains('path-row');
+        const becomingCap = el.classList.contains('sib') && !String(old.cls).includes('sib');
+        let delay = isPath ? 0 : (becomingCap ? CHILD_START / 3 + capIdx++ * CAP_STEP : 0);
+        const dur = MORPH_MS;
+        if (Math.abs(dx) < 1.5 && Math.abs(dy) < 1.5 && Math.abs(sx - 1) < .02 && Math.abs(sy - 1) < .02) {
+          if (bgFrames) el.animate(bgFrames, { duration: Math.round(dur * .8), easing: MORPH_EASE, fill: 'both', delay });
+          return;
+        }
+        const from = { transform: `translate(${dx}px,${dy}px) scale(${sx},${sy})`, opacity: becomingCap && delay ? 0 : .35 };
+        const frames = [from, { transform: 'none', opacity: 1 }];
+        const opts = { ...st, delay, duration: dur };
+        if (bgFrames) { frames[0].backgroundColor = old.bg; frames[1].backgroundColor = newBg; }
+        el.animate(frames, opts);
+      } else {
+        // 子项从被点项位置生长出来（v0.11.3 行为）
+        const a = anchor || to;
+        const dx = a.left - to.left, dy = a.top - to.top;
+        const sx = Math.max(.5, Math.min(1, a.width / to.width)), sy = Math.max(.35, Math.min(1, a.height / to.height));
+        const isAdd = Boolean(el.dataset && (el.dataset.add || el.dataset.sort));
+        const delay = isAdd ? ADD_DELAY : CHILD_START + childIdx++ * CHILD_STEP;
+        el.animate([{ transform: `translate(${dx}px,${dy}px) scale(${sx},${sy})`, opacity: 0 }, { transform: 'none', opacity: 1 }], { ...st, duration: isAdd ? 320 : MORPH_MS, delay });
+      }
+    });
+  }
+  async function animatePath(nextPath, nextUnassigned, { clickedId = null, collapseId = null } = {}) {
+    if (morphBusy) return false;
+    morphBusy = true;
+    const box = $('tree'); if (box) box.classList.add('busy');
+    pendingScrollTop = $('list-card-zoomwrap')?.scrollTop || 0;
+    const prev = snapshotTree();
+    const clickedRect = (clickedId && prev.get('n:' + clickedId)?.rect) || null;
+    const collapseRect = (collapseId && prev.get('n:' + collapseId)?.rect) || clickedRect;
+    const prevPath = [...drillPath];
+    drillPath = [...nextPath];
+    unassignedView = Boolean(nextUnassigned);
+    renderTree();
+    morphTransition(prev, { anchor: clickedRect, collapseTarget: collapseRect, prevPath });
+    await sleep(motionOK() ? MORPH_MS + 700 : 0);
+    morphBusy = false; if (box) box.classList.remove('busy');
+    return true;
+  }
+  // 同层级切换：一条连续动画——旧项的展开内容向旧根收起、旧根缩回上方小三角，
+  // 同时被点的项由小变大并展开内容。
+  const switchSibling = (level, id) => {
+    const prevId = drillPath[level] || null;
+    return animatePath([...drillPath.slice(0, level), id], false, { clickedId: id, collapseId: prevId });
+  };
+  // 详情里的「完整流程拓扑」：SVG 流程图（阶段为列、箭头连边、可点可改）
+  let lastTopology = null;
+  let currentDetailKey = null;
+  function topoLayout(t) {
+    const NODE_W = 190, NODE_H = 40, COL_GAP = 74, ROW_GAP = 26, PAD = 18, HEAD = 24;
+    const cols = Math.max(1, t.stages.length);
+    const maxRows = Math.max(1, ...t.stages.map((s) => s.items.length));
+    const W = PAD * 2 + cols * NODE_W + (cols - 1) * COL_GAP;
+    const H = PAD * 2 + HEAD + maxRows * (NODE_H + ROW_GAP) - ROW_GAP;
+    const pos = new Map();
+    t.stages.forEach((st, ci) => st.items.forEach((it, ri) => {
+      pos.set(it.key, { x: PAD + ci * (NODE_W + COL_GAP), y: PAD + HEAD + ri * (NODE_H + ROW_GAP), w: NODE_W, h: NODE_H, ci, it });
+    }));
+    return { W, H, pos, NODE_W, NODE_H, PAD, HEAD, COL_GAP };
+  }
+  function topoGraphSVG(t, zoom = 1) {
+    const L = topoLayout(t);
+    const defs = `<defs><marker id="tarrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"></path></marker></defs>`;
+    let heads = '';
+    t.stages.forEach((st, ci) => {
+      const x = L.PAD + ci * (L.NODE_W + L.COL_GAP);
+      heads += `<text x="${x}" y="${L.PAD + 14}" font-size="11" fill="#6b7280">${esc(st.label)}（${st.items.length}）</text>`;
+    });
+    let edges = '';
+    for (const e of t.edges) {
+      const a = L.pos.get(e.from), b = L.pos.get(e.to);
+      if (!a || !b) continue;
+      if (a.ci === b.ci) {
+        const x1 = a.x + a.w / 2, y1 = a.y + a.h, x2 = b.x + b.w / 2, y2 = b.y;
+        if (y2 > y1) edges += `<line x1="${x1}" y1="${y1 + 2}" x2="${x2}" y2="${y2 - 4}" stroke="#cbd5e1" stroke-width="1.4" marker-end="url(#tarrow)"></line>`;
+        continue;
+      }
+      const x1 = a.x + a.w, y1 = a.y + a.h / 2, x2 = b.x, y2 = b.y + b.h / 2;
+      const mx = (x1 + x2) / 2;
+      edges += `<path d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2 - 4},${y2}" fill="none" stroke="${e.kind === 'stage' ? '#cbd5e1' : '#94a3b8'}" stroke-width="1.4" ${e.kind === 'stage' ? 'stroke-dasharray="4 4"' : ''} marker-end="url(#tarrow)"></path>`;
+    }
+    let nodes = '';
+    for (const n of L.pos.values()) {
+      const cur = n.it.current;
+      const fill = cur ? '#eef2ff' : '#ffffff', stroke = cur ? '#2563eb' : '#cbd5e1', color = cur ? '#1d4ed8' : '#111827';
+      const raw = String(n.it.title || n.it.key);
+      const label = esc(raw.length > 22 ? raw.slice(0, 22) + '…' : raw);
+      const badge = n.it.entry ? '入口' : n.it.exit ? '结果' : '';
+      const badgeSvg = badge ? `<rect x="${n.x + n.w - 38}" y="${n.y - 8}" width="34" height="16" rx="8" fill="${n.it.entry ? '#d1fae5' : '#fef3c7'}" stroke="${n.it.entry ? '#059669' : '#b45309'}" stroke-width="1"></rect>
+        <text x="${n.x + n.w - 21}" y="${n.y + 3}" font-size="10" text-anchor="middle" fill="${n.it.entry ? '#065f46' : '#92400e'}">${badge}</text>` : '';
+      nodes += `<g class="topo-g" data-topo-key="${esc(n.it.key)}" style="cursor:pointer"><title>${esc(raw)}（${esc(n.it.categoryLabel)}）${badge ? ' · ' + badge : ''}</title>
+        <rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="9" fill="${fill}" stroke="${stroke}" stroke-width="${cur ? 2 : 1}"></rect>
+        <text x="${n.x + 10}" y="${n.y + n.h / 2 + 4}" font-size="12" fill="${color}" ${cur ? 'font-weight="600"' : ''}>${label}</text>${badgeSvg}</g>`;
+    }
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${L.W}" height="${L.H}" viewBox="0 0 ${L.W} ${L.H}" style="zoom:${zoom};display:block">${defs}${heads}${edges}${nodes}</svg>`;
+  }
+  function bindTopoNodes(container) {
+    container.querySelectorAll('[data-topo-key]').forEach((g) => g.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const rr = all.find((x) => x.key === g.getAttribute('data-topo-key'));
+      if (rr) openDetail(rr.key, rr.scope);
+    }));
+  }
+  function renderTopo(container, t, zoom = 1) {
+    if (!container) return;
+    container.innerHTML = t ? topoGraphSVG(t, zoom) : '<div class="topo-empty">没有可用的拓扑信息</div>';
+    if (t) bindTopoNodes(container);
+  }
+  function topoBasisText(t) {
+    const basis = t.basis === 'source' ? '同一来源' : t.basis === 'domain' ? '同一任务域' : '同一类别';
+    const bits = [t.kindLabel || '', `${basis}：${t.basisLabel || '—'}`, `共 ${t.total} 条`];
+    if (t.kind === 'package' && t.entry && t.exit) bits.push(`入口 ${t.entry.title} → 结果 ${t.exit.title}`);
+    return bits.filter(Boolean).join(' · ');
+  }
+  async function loadTopology(key) {
+    const box = $('dm-topo'); if (!box) return;
+    const hint = $('dm-topo-hint');
+    box.innerHTML = '<div class="topo-empty">加载中…</div>';
+    if (hint) hint.textContent = '';
+    try {
+      const j = await api('/dsh-rules/topology?key=' + encodeURIComponent(key));
+      const t = j.topology;
+      lastTopology = t || null;
+      if (!t) { box.innerHTML = '<div class="topo-empty">没有可用的拓扑信息</div>'; $('btn-topo-window').style.display = 'none'; return; }
+      if (hint) hint.textContent = '（' + topoBasisText(t) + '）';
+      $('btn-topo-window').style.display = '';
+      box.innerHTML = '';
+      box.appendChild(document.createElement('div'));
+      box.firstChild.className = 'topo-graph';
+      box.firstChild.style.cssText = 'max-height:260px;padding:4px';
+      renderTopo(box.firstChild, t, 1);
+    } catch (e) { box.innerHTML = '<div class="topo-empty">拓扑加载失败：' + e.message + '</div>'; }
+  }
+  // 只有一个入口：「查看完整结构」→ 弹一个图（没有按钮栏；滚轮缩放、拖动平移、点空白/Esc 关闭）
+  function fitTopoView(container) {
+    const svg = container.querySelector('svg');
+    if (!svg) return;
+    const w = Number(svg.getAttribute('width')) || 1;
+    const avail = Math.max(200, container.clientWidth - 10);
+    svg.style.zoom = Math.min(1.4, Math.max(0.3, Math.round((avail / w) * 100) / 100));
+  }
+  function openTopoModal() {
+    const key = (lastTopology && lastTopology.focus.key) || currentDetailKey;
+    const box = $('topo-view');
+    $('topo-modal').hidden = false;
+    if (lastTopology) {
+      renderTopo(box, lastTopology, 1);
+      fitTopoView(box);
+      return;
+    }
+    if (!key) { box.innerHTML = '<div class="topo-empty">没有可用的拓扑信息</div>'; return; }
+    box.innerHTML = '<div class="topo-empty">加载中…</div>';
+    api('/dsh-rules/topology?key=' + encodeURIComponent(key)).then((j) => {
+      lastTopology = j.topology || null;
+      renderTopo(box, lastTopology, 1);
+      fitTopoView(box);
+    }).catch(() => { box.innerHTML = '<div class="topo-empty">拓扑加载失败</div>'; });
+  }
+  function closeTopoModal() { if ($('topo-modal')) $('topo-modal').hidden = true; }
+  // 优先让宿主的 client.js 弹全屏浮层（不受右栏宽度限制）；没有宿主支持时退回面板内弹窗
+  function openTopoExtern(key) {
+    try {
+      const host = (window.parent && window.parent !== window && window.parent.__dshRulesTopoHost) ? window.parent : null
+      if (!host) return false
+      host.postMessage({ type: 'dsh-rules:open-topo', key }, location.origin)
+      return true
+    } catch { return false }
+  }
+  $('btn-topo-window').addEventListener('click', () => {
+    const key = (lastTopology && lastTopology.focus.key) || currentDetailKey
+    if (!key) { notify('还没有拓扑数据，稍等片刻再点'); return }
+    if (openTopoExtern(key)) return
+    openTopoModal()
+  });
+  $('topo-modal').addEventListener('click', (ev) => { if (ev.target === $('topo-modal')) closeTopoModal(); });
+  attachTopoPanZoom($('topo-view'));
+  function attachTopoPanZoom(container) {
+    let zoom = 1;
+    const apply = (z) => {
+      zoom = Math.max(0.2, Math.min(3, Math.round(z * 100) / 100));
+      const svg = container.querySelector('svg');
+      if (svg) svg.style.zoom = zoom;
+    };
+    container.addEventListener('wheel', (ev) => {
+      ev.preventDefault();
+      apply(zoom + (ev.deltaY < 0 ? 0.12 : -0.12) * Math.max(1, Math.abs(zoom)));
+    }, { passive: false });
+    let drag = null;
+    container.addEventListener('mousedown', (ev) => {
+      if (ev.target.closest && ev.target.closest('[data-topo-key]')) return;
+      drag = { x: ev.clientX, y: ev.clientY, left: container.scrollLeft, top: container.scrollTop };
+      container.classList.add('panning');
+      ev.preventDefault();
+    });
+    window.addEventListener('mousemove', (ev) => {
+      if (!drag) return;
+      container.scrollLeft = drag.left - (ev.clientX - drag.x);
+      container.scrollTop = drag.top - (ev.clientY - drag.y);
+    });
+    window.addEventListener('mouseup', () => { drag = null; container.classList.remove('panning'); });
+  }
+  // 相关准则：来源 / 同组 / 标签 / 任务域 / 同类 打分，给"看不懂时顺带看哪几条"
+  function relatedRules(r, limit = 6) {
+    const seg = (k) => String(k || '').split('.').slice(0, 2).join('.');
+    const dom = new Set(r.appliesTo || []);
+    const tags = new Set(r.tags || []);
+    const out = [];
+    for (const x of all) {
+      if (x.key === r.key && x.scope === r.scope) continue;
+      let score = 0;
+      const why = [];
+      if (x.source && r.source && x.source === r.source) { score += 3; why.push('同一来源'); }
+      if (seg(x.key) === seg(r.key)) { score += 2; why.push('同一组'); }
+      const sharedTags = (x.tags || []).filter((t) => tags.has(t));
+      if (sharedTags.length) { score += sharedTags.length; why.push('标签相同'); }
+      const sharedDom = (x.appliesTo || []).filter((d) => dom.has(d));
+      if (sharedDom.length) { score += 2; why.push('同一任务域'); }
+      if (!score && x.category === r.category) { score = 1; why.push('同类'); }
+      if (score > 0) out.push({ r: x, score, why: [...new Set(why)].slice(0, 2).join(' · ') });
+    }
+    out.sort((a, b) => b.score - a.score);
+    return out.slice(0, limit);
+  }
+  // 没有 AI 解释时的兜底大白话（由字段拼出来，保证再短的准则也看得懂）
+  function autoExplain(r) {
+    const parts = [];
+    const v = String(r.value || '').trim();
+    parts.push(`这条准则的意思是：${v}。`);
+    parts.push(`它属于「${CAT_LABEL[r.category] || r.category}」类，${CAT_HINT[r.category] || ''}`);
+    if (r.coverage === 'local') {
+      const ds = (r.appliesTo || []).map((d) => DOMAIN_LABEL[d] || d);
+      parts.push(`它只在你做「${ds.join('、') || '相关'}」这类任务时生效，其它任务不受影响。`);
+    } else {
+      parts.push('它对所有任务都生效，助手每次都会参考它。');
+    }
+    if (String(r.scope).startsWith('project:')) parts.push('它只对这个项目生效，换项目就不适用。');
+    else if (r.scope === 'user') parts.push('它只对当前用户生效。');
+    const rel = relatedRules(r, 3);
+    if (rel.length) parts.push(`和它配套的还有：${rel.map((x) => `「${x.r.title || x.r.key}」`).join('、')}，一起看更清楚。`);
+    if (v.length < 12) parts.push('（这条原文很短，可能不够清楚，建议让 AI 补全。）');
+    return parts.join('');
+  }
+  function renderDetailExtra(r) {
+    const box = $('dm-extra'); if (!box) return;
+    const len = String(r.value || '').trim().length;
+    const short = len < 12 && !r.explain;
+    const rel = relatedRules(r, 8);
+    box.innerHTML = `
+      <section class="dm-sec">
+        <h3>小白也能看懂</h3>
+        <p>${esc(r.explain || autoExplain(r))}</p>
+        ${short ? `<p class="dm-warn">原文只有 ${len} 个字，可能看不懂。</p>` : ''}
+        <div class="dm-acts"><button class="small" id="btn-ai-explain">让 AI 讲清楚 / 补全</button><button class="small" id="btn-rule-history">改动记录</button></div>
+      </section>
+      ${rel.length ? `<section class="dm-sec"><h3>和它配套的准则</h3><div class="rel-list">${rel.map((x) => `<button class="rel-chip" data-rel-key="${esc(x.r.key)}" title="${esc(x.r.title || x.r.key)}">${esc(x.r.title || x.r.key)}<span class="rel-why">${esc(x.why)}</span></button>`).join('')}</div></section>` : ''}`;
+    const ai = $('btn-ai-explain');
+    if (ai) ai.addEventListener('click', () => aiExplain(r));
+    const hist = $('btn-rule-history');
+    if (hist) hist.addEventListener('click', () => openHistory(r.key));
+    box.querySelectorAll('[data-rel-key]').forEach((b) => b.addEventListener('click', () => {
+      const x = all.find((it) => it.key === b.dataset.relKey);
+      if (x) openDetail(x.key, x.scope);
+    }));
+  }
+  function aiExplain(r) {
+    const rel = relatedRules(r, 5).map((x) => `- ${x.r.title || x.r.key}（${x.r.key}，${x.why}）`).join('\n') || '（暂无）';
+    closeDetail();
+    openAssistant(`请把这条准则讲给完全不懂的人听，并把解释写回库。
+key：${r.key}
+当前名称：${labelOf(r)}
+当前内容：${String(r.value).slice(0, 300)}
+现有白话解释：${r.explain || '（空）'}
+相关准则：\n${rel}
+
+要求：
+1) 用大白话解释它讲什么、什么时候用、和上面哪些准则配套、不照做会怎样；
+2) 如果当前内容太短或太形式化，把内容补成一句普通人能照着做的完整句子（保留原意，别编造）；
+3) 用 rules_set 把解释写进 explain 字段（key 不变），必要时同时更新 value。`);
+  }
+  // 移动目标选择：一层一层展开（选中黄色），底部「确定 / 取消」
+  let moveState = null;
+  function nodeListWithParent() {
+    const out = [];
+    const walk = (nodes, parentId) => (nodes || []).forEach((n) => {
+      out.push({ id: n.id, title: n.title, parentId, children: n.children || [] });
+      walk(n.children, n.id);
+    });
+    walk((tree && tree.roots) || [], null);
+    return out;
+  }
+  function nodePathLabel(byId, id) {
+    return pathOf(byId, id).map((x) => x.title).join(' / ');
+  }
+  function pathOf(byId, id) {
+    const parts = []; let cur = id; let guard = 0;
+    while (cur && guard++ < 30) {
+      const n = byId.get(cur);
+      if (!n) break;
+      parts.unshift({ id: n.id, title: n.title || n.id });
+      cur = n.parentId;
+    }
+    return parts;
+  }
+  function descendantsSet(nodeId) {
+    const byId = new Map(nodeListWithParent().map((n) => [n.id, n]));
+    const set = new Set();
+    const collect = (id) => {
+      const n = byId.get(id); if (!n) return;
+      set.add(id);
+      (n.children || []).forEach((c) => collect(c.id));
+    };
+    collect(nodeId);
+    return set;
+  }
+  function countRulesIn(nodeId) {
+    const set = descendantsSet(nodeId);
+    return all.filter((r) => r.nodeId && set.has(r.nodeId)).length;
+  }
+  function closeMoveDialog() { const m = $('move-modal'); if (m) m.hidden = true; moveState = null; }
+  function renderMoveDialog() {
+    const st = moveState; if (!st) return;
+    const list = nodeListWithParent();
+    const byId = new Map(list.map((n) => [n.id, n]));
+    const curId = st.path.length ? st.path[st.path.length - 1] : null;
+    const cur = curId ? byId.get(curId) : null;
+    const kids = curId ? ((cur && cur.children) || []) : ((tree && tree.roots) || []);
+    const rootLabel = st.kind === 'rule' ? '未分类（不属于任何文件夹）' : '顶级（最外层）';
+    const atRoot = st.path.length === 0;
+    // 第一行：未分类 / 顶级；第二行：根目录 › 祖先 › 当前（当前黄色）
+    const row1 = `<div class="mv-row"><button class="mv-crumb ${atRoot ? 'sel' : ''}" data-mv-none="1">${esc(rootLabel)}</button></div>`;
+    const segs = [`<button class="mv-crumb ${atRoot ? 'sel' : ''}" data-mv-jump="-1">根目录</button>`];
+    st.path.forEach((id, i) => {
+      const n = byId.get(id);
+      segs.push('<span class="mv-arrow">›</span>');
+      segs.push(`<button class="mv-crumb ${i === st.path.length - 1 ? 'sel' : ''}" data-mv-jump="${i}">${esc((n && n.title) || id)}</button>`);
+    });
+    $('move-crumbs').innerHTML = row1 + `<div class="mv-row">${segs.join('')}</div>`;
+    // 当前层：先列文件夹，再列这个文件夹里的具体条目（只展示、不能当目标）
+    let cards = '';
+    kids.forEach((n) => {
+      const banned = st.kind === 'node' && st.banned.has(n.id);
+      const cnt = countRulesIn(n.id);
+      cards += `<button class="move-card" data-mv-node="${esc(n.id)}" ${banned ? 'disabled title="不能移进自己或自己的子孙"' : ''}><span>${esc(n.title)}</span><span class="mv-sub">${(n.children || []).length} 个子类 · ${cnt} 条</span></button>`;
+    });
+    const localRules = curId ? all.filter((r) => (r.nodeId || null) === curId) : [];
+    if (localRules.length) {
+      cards += '<div class="mv-section">这个文件夹里的条目（只展示，不能选为目标）</div>';
+      localRules.slice(0, 30).forEach((r) => {
+        cards += `<div class="move-rule"><span>${esc(labelOf(r))}</span><span class="mv-sub">条目</span></div>`;
+      });
+      if (localRules.length > 30) cards += `<div class="move-rule">…还有 ${localRules.length - 30} 条</div>`;
+    }
+    if (!kids.length && !localRules.length) cards += '<div class="empty" style="padding:10px 2px">这个文件夹是空的，可以直接点「确定」移动到这里</div>';
+    $('move-list').innerHTML = cards;
+    $('move-target').textContent = '将移动到：' + (st.path.length ? nodePathLabel(byId, st.path[st.path.length - 1]) : rootLabel);
+    $('move-crumbs').querySelectorAll('[data-mv-jump]').forEach((b) => b.addEventListener('click', () => {
+      const idx = Number(b.dataset.mvJump);
+      moveState.path = idx < 0 ? [] : moveState.path.slice(0, idx + 1);
+      renderMoveDialog();
+    }));
+    $('move-list').querySelectorAll('[data-mv-node]').forEach((b) => b.addEventListener('click', () => {
+      if (b.disabled) return;
+      moveState.path.push(b.dataset.mvNode);
+      renderMoveDialog();
+    }));
+    const none = $('move-crumbs').querySelector('[data-mv-none]') || $('move-list').querySelector('[data-mv-none]');
+    if (none) none.addEventListener('click', () => { moveState.path = []; renderMoveDialog(); });
+  }
+  function openMoveDialog({ kind, key = '', nodeId = '' } = {}) {
+    const byId = new Map(nodeListWithParent().map((n) => [n.id, n]));
+    let curPath = [];
+    if (kind === 'rule') {
+      const r = all.find((x) => x.key === key && x.scope === 'global') || all.find((x) => x.key === key);
+      curPath = r && r.nodeId ? pathOf(byId, r.nodeId) : [];
+    } else {
+      const cur = byId.get(nodeId);
+      curPath = cur && cur.parentId ? pathOf(byId, cur.parentId) : [];
+    }
+    moveState = { kind, key, nodeId, path: curPath.map((x) => x.id), banned: kind === 'node' ? descendantsSet(nodeId) : new Set() };
+    $('move-title').textContent = kind === 'rule' ? '把这条准则移到哪里？' : '把这个分类移到哪里？';
+    $('move-ok').onclick = async () => {
+      const st = moveState; if (!st) return;
+      const rawTarget = st.path.length ? st.path[st.path.length - 1] : null;
+      closeMoveDialog();
+      if (st.kind === 'rule') await treeAction({ action: 'rule-move', key: st.key, targetId: rawTarget });
+      else await treeAction({ action: 'node-move', nodeId: st.nodeId, parentId: rawTarget });
+    };
+    renderMoveDialog();
+    $('move-modal').hidden = false;
+  }
+  // 改动记录：哪条规则、什么时候、由什么改成什么（最新在前）
+  function fmtHistTime(at) { try { return new Date(at).toLocaleString('zh-CN', { hour12: false }) } catch { return String(at) } }
+  function histTrunc(s, n = 140) { const t = String(s ?? ''); return t.length > n ? t.slice(0, n) + '…' : t }
+  function renderHistoryEntries(entries, key) {
+    const box = $('history-list');
+    if (!entries.length) {
+      box.innerHTML = `<div class="hist-empty">还没有改动记录${key ? '（这条规则暂时没有）' : ''}。<br>从现在起，每次新增 / 修改 / 删除规则都会自动记录。</div>`;
+      return;
+    }
+    const actLabel = { create: '新增', update: '修改', remove: '删除' };
+    box.innerHTML = entries.map((e) => {
+      const act = actLabel[e.action] || e.action;
+      const diffs = (e.changes || []).map((c) => `<div>${esc(c.label)}：<span class="hist-old">${esc(histTrunc(c.from, 120)) || '（空）'}</span> → <span class="hist-new">${esc(histTrunc(c.to, 120)) || '（空）'}</span></div>`).join('');
+      return `<div class="hist-item">
+        <div class="hist-head"><span class="hist-act ${esc(e.action)}">${esc(act)}</span><span>${esc(fmtHistTime(e.at))}</span><span>${esc(e.key)}</span></div>
+        <div class="hist-rule">${esc(e.title || e.key)}</div>
+        <div class="hist-diff">${diffs}</div>
+      </div>`;
+    }).join('');
+  }
+  async function openHistory(key = null) {
+    $('history-title').textContent = key ? '改动记录 · ' + key : '改动记录';
+    $('history-sub').textContent = '加载中…';
+    $('history-list').innerHTML = '';
+    $('history-modal').hidden = false;
+    try {
+      const j = await api('/dsh-rules/history?limit=200' + (key ? '&key=' + encodeURIComponent(key) : ''));
+      $('history-sub').textContent = `共 ${j.total ?? (j.entries || []).length} 条记录（最新在前）`;
+      renderHistoryEntries(j.entries || [], key);
+    } catch (e) {
+      $('history-sub').textContent = '';
+      $('history-list').innerHTML = `<div class="hist-empty">读取失败：${esc(e.message)}<br>如果是旧宿主，需要重启 DSH 后才支持改动记录。</div>`;
+    }
+  }
+  function closeHistory() { const m = $('history-modal'); if (m) m.hidden = true; }
+  function syncCoverageControls(r) {
+    const def = $('e-default'); const sess = $('e-session-on');
+    if (!def || !sess) return;
+    if (def.value === 'yes') { sess.value = 'yes'; sess.disabled = true }
+    else sess.disabled = !SESSION_TAG
+    const box = $('e-session-box');
+    if (!box) return;
+    if (!SESSION_TAG) { box.innerHTML = '<span class="count">面板没拿到会话 id：只能改「默认生效」；「当前对话生效」要重启 DSH 后才能切换。</span>'; return }
+    const active = r ? sessionActiveKeys.has(r.key) : false
+    box.innerHTML = '<span class="count">本对话状态：' + ((def.value === 'yes' || active) ? '生效中' : '未生效') + '（tag=' + esc(SESSION_TAG.slice(0, 8)) + '…）</span>'
+  }
+  function renderSessionBox(r) { syncCoverageControls(r) }
+  function openDetail(key, scope) {
+    creating = false;
+    selected = key ? { key, scope } : null;
+    currentDetailKey = key || null;
+    const r = all.find((x) => x.key === key && x.scope === scope);
+    if (!r) return;
+    // 详情改成弹窗：把表单搬进 detail-modal
+    $('dm-title').textContent = '详情 · ' + labelOf(r);
+    $('dm-hint').textContent = (CAT_LABEL[r.category] || r.category) + ' · ' + covLabel(r);
+    $('dm-body').appendChild($('detail-form'));
+    $('detail-form').style.display = '';
+    $('detail-modal').hidden = false;
+    $('e-title').value = r.title || '';
+    $('e-value').value = r.value;
+    $('e-explain').value = r.explain || '';
+    $('e-status').value = r.status;
+    $('e-default').value = r.coverage === 'local' ? 'no' : 'yes';
+    $('e-session-on').value = r.coverage === 'local' ? (sessionActiveKeys.has(r.key) ? 'yes' : 'no') : 'yes';
+    syncCoverageControls(r);
+    $('e-key').value = r.key;
+    $('e-source').value = r.source || '';
+    $('e-priority').value = r.priority ?? '';
+    $('e-meta').innerHTML = `<span class="k">作用域</span><span>${esc(r.scope)}</span><span class="k">更新时间</span><span>${esc(r.updatedAt || '')}</span>` + ((r.tags||[]).length ? `<span class="k">标签</span><span>${esc((r.tags||[]).join('、'))}</span>` : '');
+    $('btn-delete').style.display = '';
+    $('save-hint').textContent = '';
+    paintSelection();
+    renderDetailExtra(r);
+    loadTopology(r.key);
+  }
+  function openCreate() {
+    creating = true; selected = null;
+    pendingRuleTarget = false; pendingRuleNode = null;
+    openCreateModal('rule', null);
+  }
+  function closeDetail() {
+    selected = null; creating = false;
+    $('detail-modal').hidden = true;
+    $('detail-form').style.display = 'none';
+    if (detailHome && $('detail-form').parentNode !== detailHome) detailHome.appendChild($('detail-form'));
+    $('detail-empty').style.display = '';
+    $('detail-title').textContent = '详情';
+    $('detail-hint').textContent = '';
+    paintSelection();
+  }
+  // 只切换选中高亮，不重绘列表：这样取消选中时蓝底能平滑过渡回原色
+  function paintSelection() {
+    const box = $('tree'); if (!box) return;
+    box.querySelectorAll('.rule-item').forEach((el) => {
+      const on = !!selected && el.dataset.key === selected.key && el.dataset.scope === selected.scope;
+      el.classList.toggle('active', on);
+    });
+  }
+  // ---------- 新建弹窗（文件夹 / 准则） ----------
+  let cmMode = null, cmParent = null, cmCreatedKey = null;
+  function openCreateModal(mode, parentId) {
+    cmMode = mode; cmParent = parentId || null;
+    $('cm-title').textContent = mode === 'rule' ? '新建准则' : '新建文件夹';
+    $('cm-value-field').style.display = mode === 'rule' ? '' : 'none';
+    $('cm-ai').style.display = mode === 'rule' ? '' : 'none';
+    if ($('cm-ai-text')) $('cm-ai-text').value = '';
+    $('cm-name').placeholder = mode === 'rule' ? '准则名称（例如：下载默认目录）' : '文件夹名称（例如：客户A / 交付阶段）';
+    $('cm-name').value = ''; $('cm-value').value = ''; $('cm-hint').textContent = '';
+    $('create-modal').hidden = false;
+    setTimeout(() => $('cm-name').focus(), 30);
+  }
+  function closeCreateModal() {
+    $('create-modal').hidden = true;
+    cmMode = null; cmParent = null;
+  }
+  async function submitCreateModal() {
+    if (!cmMode) return;
+    const name = $('cm-name').value.trim();
+    const value = $('cm-value').value.trim();
+    if (!name) { $('cm-hint').textContent = cmMode === 'rule' ? '请填写准则名称' : '请填写文件夹名称'; return; }
+    if (cmMode === 'rule' && !value) { $('cm-hint').textContent = '请填写准则内容'; return; }
+    const okBtn = $('cm-ok'); okBtn.disabled = true;
+    try {
+      if (cmMode === 'folder') {
+        const body = { action: 'node-add', title: name, schemeId };
+        if (cmParent) body.parentId = cmParent;
+        await api('/dsh-rules/tree', body);
+      } else {
+        const key = 'imported.' + (toSlug(name) || 'item_' + Date.now().toString(36));
+        await api('/dsh-rules/set', { key, title: name, value, category: 'imported', status: 'active', scope: 'global', source: '手动添加' });
+        if (cmParent) { try { await api('/dsh-rules/tree', { action: 'rule-move', key, targetId: cmParent, schemeId }); } catch {} }
+        cmCreatedKey = key;
+      }
+      closeCreateModal();
+      await load();
+      // 新建后直接打开详情：马上选「默认生效 / 当前对话生效」，避免默默落成局部待复核
+      if (cmCreatedKey) { openDetail(cmCreatedKey, 'global'); cmCreatedKey = null; }
+    } catch (e) { $('cm-hint').textContent = '创建失败：' + e.message; }
+    okBtn.disabled = false;
+  }
+  function toSlug(s) {
+    return String(s).toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'item';
+  }
+  // 通用确认/输入弹窗（iframe 里 window.prompt/confirm 可能被禁，所以用页面内弹窗）
+  let undoAvailable = false;
+  function askDialog({ title, message = '', value = null, confirmText = '确定', danger = false } = {}) {
+    return new Promise((resolve) => {
+      const modal = $('ask-modal');
+      const withInput = value !== null && value !== undefined;
+      $('ask-title').textContent = title || '请确认';
+      $('ask-msg').textContent = message;
+      $('ask-msg').hidden = !message;
+      $('ask-field').hidden = !withInput;
+      if (withInput) { $('ask-input').value = String(value); $('ask-input').type = 'text'; }
+      const ok = $('ask-ok');
+      ok.textContent = confirmText;
+      ok.classList.toggle('danger', Boolean(danger));
+      modal.hidden = false;
+      let closed = false;
+      const done = (v) => { if (closed) return; closed = true; modal.hidden = true; ok.onclick = null; $('ask-cancel').onclick = null; modal.onclick = null; resolve(v); };
+      ok.onclick = () => done(withInput ? $('ask-input').value.trim() : true);
+      $('ask-cancel').onclick = () => done(withInput ? null : false);
+      modal.onclick = (ev) => { if (ev.target === modal) done(withInput ? null : false); };
+      setTimeout(() => { if (withInput) { const el = $('ask-input'); el.focus(); el.select(); } else ok.focus(); }, 30);
+    });
+  }
+  const askText = (title, value = '', message = '') => askDialog({ title, value, message });
+  const askConfirm = (title, message = '', danger = false) => askDialog({ title, message, confirmText: '确定', danger });
+
+  async function save() {
+    const title = $('e-title').value.trim();
+    const value = $('e-value').value;
+    const cur = selected ? all.find((x) => x.key === selected.key && x.scope === selected.scope) : null;
+    const cat = cur ? cur.category : 'workflow';
+    if (!value.trim()) { $('save-hint').textContent = '请填写内容'; return; }
+    let key = $('e-key').value.trim();
+    if (!key) key = selected ? selected.key : (cat + '.' + (title ? toSlug(title) : 'item_' + Date.now().toString(36)));
+    let scope = cur ? cur.scope : 'global';
+    const body = { key, title: title || labelOf({ key }), value, category: cat, status: $('e-status').value, scope, source: $('e-source').value.trim() || 'manual', explain: $('e-explain').value.trim() };
+    const wantDefault = $('e-default').value === 'yes';
+    const wantSession = wantDefault || $('e-session-on').value === 'yes';
+    if (wantSession && !wantDefault && !SESSION_TAG) { $('save-hint').textContent = '「当前对话生效」需要面板拿到会话 id（重启 DSH 后可用）；也可以先存成默认不生效'; return }
+    body.coverage = wantDefault ? 'default' : 'local';
+    if (wantDefault) body.appliesTo = [];
+    const pri = Number($('e-priority').value);
+    if (Number.isFinite(pri) && pri > 0) body.priority = pri;
+    $('save-hint').textContent = '保存中…';
+    try {
+      const j = await api('/dsh-rules/set', body);
+      // 「当前对话生效」= 这个会话里 pin / unpin 这条（默认生效时清掉旧的 pin，避免换会话后残留）
+      if (SESSION_TAG) {
+        try { await api('/dsh-rules/session', { op: (!wantDefault && wantSession) ? 'pin' : 'unpin', session: SESSION_TAG, keys: [key] }) } catch {}
+      }
+      // 若从某个文件夹里的「＋新建准则」进入，创建后归入该文件夹（否则保持未分类）
+      if (pendingRuleTarget) {
+        try { await api('/dsh-rules/tree', { action: 'rule-move', key, targetId: pendingRuleNode || '__unassigned__', schemeId }); } catch {}
+        pendingRuleTarget = false; pendingRuleNode = null;
+      }
+      $('save-hint').textContent = '已保存' + (j.synced && j.synced.changed ? '，已同步到全局' : '');
+      await load(); openDetail(key, scope); await audit();
+    } catch (e) { $('save-hint').textContent = '保存失败：' + e.message; }
+  }
+  async function load() {
+    try {
+      await loadSessionState();
+      const j = await api('/dsh-rules/list' + (schemeId ? '?scheme=' + encodeURIComponent(schemeId) : ''));
+      all = j.rules || [];
+      schemes = j.schemes || [];
+      tree = j.tree || null;
+      schemeId = j.schemeId || schemeId || 'default';
+      undoAvailable = Boolean(j.undoAvailable);
+      hostVersion = j.pluginVersion || '';
+      hostFeatures = j.features || null;
+      sourceGate = j.sources || null;
+      if ($('btn-undo')) $('btn-undo').disabled = !undoAvailable;
+      renderSchemes();
+      renderTree();
+      refreshReadState();
+      refreshAssistBadge();
+    } catch (e) { $('stat').textContent = '加载失败：' + e.message; }
+  }
+  /* ---------------- 读取规则（从历史快照恢复全部准则）+ 助手未读小圈 ---------------- */
+  let readPolling = false;
+  const fmtReadTime = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  function paintReadState(j) {
+    if (!readPolling && $('read-time')) {
+      $('read-time').textContent = j?.lastReadAt ? '上次读取：' + fmtReadTime(j.lastReadAt) : '尚未读取';
+    }
+    if ($('btn-read-rules')) $('btn-read-rules').title = '读取规则：从历史快照/归档恢复全部可用准则（已存在的跳过，不覆盖改动）';
+  }
+  async function refreshReadState() {
+    try { const j = await api('/dsh-rules/read-state'); paintReadState(j); return j; } catch { return null; }
+  }
+  // 助手未读：统计助手的 assistant 消息数，减去本浏览器已读到的数量
+  const assistSeenKey = 'dsh-rules:assist-seen';
+  function paintAssistBadge(n) {
+    const b = $('assist-badge');
+    if (!b) return;
+    b.textContent = String(n);
+    b.hidden = n <= 0;
+  }
+  function markAssistantSeen(messages) {
+    const n = (messages || []).filter((m) => m.role === 'assistant').length;
+    try { localStorage.setItem(assistSeenKey, String(n)); } catch {}
+    paintAssistBadge(0);
+  }
+  async function refreshAssistBadge() {
+    try {
+      const j = await api('/dsh-rules/assistant');
+      const n = (j.messages || []).filter((m) => m.role === 'assistant').length;
+      let seen = 0;
+      try { seen = Number(localStorage.getItem(assistSeenKey) || 0) } catch {}
+      paintAssistBadge(Math.max(0, n - seen));
+    } catch {}
+  }
+  async function runReadRules() {
+    const btn = $('btn-read-rules');
+    if (!btn || btn.disabled) return;
+    const before = (await refreshReadState())?.lastReadAt || '';
+    btn.disabled = true;
+    btn.style.opacity = '0.55';
+    btn.style.cursor = 'progress';
+    readPolling = true;
+    if ($('read-time')) $('read-time').textContent = '读取中…（助手正在从历史快照恢复，按钮已锁定）';
+    const startedAt = Date.now();
+    try {
+      await api('/dsh-rules/read', {});
+      let done = null;
+      while (Date.now() - startedAt < 240000) {
+        await new Promise((res) => setTimeout(res, 1500));
+        const cur = await refreshReadState();
+        if (cur && cur.lastReadAt && cur.lastReadAt !== before) { done = cur; break; }
+      }
+      if (done) {
+        await load();
+        if ($('read-time')) $('read-time').textContent = '读取完成：当前共 ' + (done.lastReadCount || done.total || 0) + ' 条 · ' + fmtReadTime(done.lastReadAt);
+        refreshAssistBadge();
+      } else if ($('read-time')) {
+        $('read-time').textContent = '读取超时（可打开助手看结果）';
+      }
+    } catch (e) {
+      if ($('read-time')) $('read-time').textContent = '读取失败：' + e.message;
+    } finally {
+      readPolling = false;
+      btn.disabled = false;
+      btn.style.opacity = '';
+      btn.style.cursor = '';
+      refreshReadState();
+    }
+  }
+  async function audit() {
+    try {
+      const j = await api('/dsh-rules/audit'); const a = j.audit || {};
+      const lab = (k) => { const r = all.find((x) => x.key === k); return r ? labelOf(r) : humanize(k); };
+      $('audit').innerHTML = [
+        `<span class="k">总量</span><span>${a.total ?? '?'} 条（生效 ${a.active ?? '?'} · 待校准 ${a.pendingCount ?? '?'} · 已弃用 ${a.deprecated ?? 0}）</span>`,
+        `<span class="k">冲突</span><span>${a.conflicts?.length ? '有冲突：' + a.conflicts.map((c) => esc(lab(c.key))).join('、') : '无'}</span>`,
+        `<span class="k">待校准</span><span>${a.pending?.length ? a.pending.map((p) => esc(lab(p.key))).join('、') : '无'}</span>`,
+        `<span class="k">分类</span><span>${(a.byCategory || []).map((x) => esc(CAT_LABEL[x.category] || x.category) + ' ' + x.count).join(' · ')}</span>`,
+      ].join('');
+    } catch (e) { $('audit').textContent = '体检失败：' + e.message; }
+  }
+  async function report() {
+    try {
+      const dir = $('r-project').value.trim();
+      const j = await api('/dsh-rules/report' + (dir ? '?project=' + encodeURIComponent(dir) : ''));
+      const h = j.report || {};
+      const lab = (k) => { const r = all.find((x) => x.key === k); return r ? labelOf(r) : humanize(k); };
+      $('report').innerHTML = [
+        `<span class="k">总量</span><span>${h.total} 条（生效 ${h.active} · 待校准 ${h.pending} · 冲突 ${h.conflicts}）</span>`,
+        `<span class="k">项目覆盖</span><span>${h.project?.dir ? esc(h.project.dir) + '（' + h.project.rules + ' 条）' : '未指定'}</span>`,
+        `<span class="k">90 天未更新</span><span>${h.stale?.length ? h.stale.map(lab).map(esc).join('、') : '无'}</span>`,
+        `<span class="k">空缺类别</span><span>${h.coverageGaps?.length ? h.coverageGaps.map((c) => esc(CAT_LABEL[c] || c)).join('、') : '类别齐备'}</span>`,
+        `<span class="k">最常用</span><span>${h.topUsed?.length ? h.topUsed.map(([k, v]) => esc(lab(k)) + '(' + v + ')').join('、') : '暂无记录'}</span>`,
+        `<span class="k">从未使用</span><span>${h.unusedActive?.length ? h.unusedActive.slice(0, 10).map(lab).map(esc).join('、') + (h.unusedActive.length > 10 ? ' …' : '') : '全部用过'}</span>`,
+      ].join('');
+    } catch (e) { $('report').textContent = '报告失败：' + e.message; }
+  }
+  async function backups() {
+    try {
+      const j = await api('/dsh-rules/backups'); const list = j.backups || [];
+      $('backups').innerHTML = list.length
+        ? list.map((b) => `<div style="display:flex;gap:8px;align-items:center;justify-content:space-between"><span class="k">${esc(b.replace('AGENTS.md.bak-dsh-rules-',''))}</span><button class="small" data-restore="${esc(b)}">回滚</button></div>`).join('')
+        : '没有备份';
+      document.querySelectorAll('[data-restore]').forEach((b) => b.addEventListener('click', async () => {
+        if (!(await askConfirm('回滚全局准则', '把全局准则回滚到这个时间点？当前内容会先另存一份。', true))) return;
+        try { await api('/dsh-rules/rollback', { name: b.dataset.restore }); notify('已回滚到 ' + b.dataset.restore.replace('AGENTS.md.bak-dsh-rules-','')); }
+        catch (e) { notify('回滚失败：' + e.message); }
+      }));
+    } catch (e) { $('backups').textContent = '读取失败：' + e.message; }
+  }
+  // ---------- 助手会话（面板 ↔ 真实 DSH 会话） ----------
+  let assistantTimer = null;
+  let assistantSig = '';
+  const escA = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function renderAssistant(messages, extra) {
+    const box = $('assistant-msgs'); if (!box) return;
+    const list = messages || [];
+    // 内容没变就不重绘（否则定时轮询会把正在往上翻的滚动位置冲掉）
+    const sig = list.map((m) => `${m.id || ''}|${String(m.text || '').length}|${String(m.text || '').slice(-24)}`).join('§') + (extra ? '|x' : '');
+    if (sig === assistantSig && box.dataset.rendered === '1') return;
+    const prevTop = box.scrollTop;
+    const wasAtBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 48;
+    if (!list.length) {
+      box.innerHTML = '<div class="amsg sys"><div class="bubble">还没有对话。可以直接说「我从 X 下载了一个技能」，或贴一句你想记的准则。</div></div>';
+    } else {
+      box.innerHTML = list.map((m) => `<div class="amsg ${m.role}"><span class="who">${m.role === 'user' ? '你' : '助手'}</span><div class="bubble">${escA(m.text)}</div></div>`).join('');
+    }
+    if (extra) box.insertAdjacentHTML('beforeend', `<div class="amsg sys"><div class="bubble">${escA(extra)}</div></div>`);
+    assistantSig = sig;
+    box.dataset.rendered = '1';
+    // 原本在底部（或首次渲染）→ 跟随到底；正在往上翻 → 保持原位置
+    box.scrollTop = (wasAtBottom || prevTop === 0) ? box.scrollHeight : Math.min(prevTop, box.scrollHeight);
+  }
+  async function loadAssistant() {
+    try {
+      const j = await api('/dsh-rules/assistant');
+      renderAssistant(j.messages || []);
+      $('assistant-state').textContent = j.busy ? '处理中…' : '';
+      if (!$('assistant-modal').hidden) markAssistantSeen(j.messages || []);
+    } catch (e) { $('assistant-state').textContent = '读取失败：' + e.message; }
+  }
+  function openAssistant(prefill) {
+    $('assistant-modal').hidden = false;
+    if (prefill) $('assistant-input').value = prefill;
+    loadAssistant();
+    clearInterval(assistantTimer);
+    assistantTimer = setInterval(loadAssistant, 2500);
+    setTimeout(() => $('assistant-input').focus(), 50);
+  }
+  function closeAssistant() { $('assistant-modal').hidden = true; clearInterval(assistantTimer); assistantTimer = null; }
+  async function sendAssistant() {
+    const text = $('assistant-input').value.trim();
+    if (!text) return;
+    $('assistant-send').disabled = true;
+    $('assistant-state').textContent = '发送中…';
+    try {
+      const j = await api('/dsh-rules/assistant', { message: text, session: SESSION_TAG });
+      $('assistant-input').value = '';
+      $('assistant-input').style.height = '';
+      const box = $('assistant-msgs');
+      if (box) box.insertAdjacentHTML('beforeend', `<div class="amsg user"><span class="who">你</span><div class="bubble">${escA(text)}</div></div>`);
+      $('assistant-state').textContent = '等待助手回复…';
+      setTimeout(loadAssistant, 1200);
+    } catch (e) { $('assistant-state').textContent = '发送失败：' + e.message; }
+    finally { $('assistant-send').disabled = false; }
+  }
+  $('btn-assistant').addEventListener('click', () => openAssistant(''));
+  $('btn-read-rules').addEventListener('click', runReadRules);
+  $('assistant-close').addEventListener('click', closeAssistant);
+  $('assistant-send').addEventListener('click', sendAssistant);
+  $('assistant-input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendAssistant(); } });
+  $('assistant-modal').addEventListener('click', (e) => { if (e.target === $('assistant-modal')) closeAssistant(); });
+  // 输入框随内容长高（最多 140px）
+  $('assistant-input').addEventListener('input', () => {
+    const t = $('assistant-input');
+    t.style.height = 'auto';
+    t.style.height = Math.min(140, t.scrollHeight) + 'px';
+  });
+  $('assistant-reset').addEventListener('click', async () => {
+    if (!(await askConfirm('新会话', '结束后下一条消息会新建一条助手会话（旧会话保留在会话列表里）。'))) return;
+    try { await api('/dsh-rules/assistant', { action: 'reset' }); assistantSig = ''; $('assistant-msgs').innerHTML = ''; $('assistant-msgs').dataset.rendered = ''; $('assistant-state').textContent = '已重置'; }
+    catch (e) { $('assistant-state').textContent = '重置失败：' + e.message; }
+  });
+  // 新建准则弹窗里的「一句话起草」
+  $('cm-ai-draft').addEventListener('click', async () => {
+    const text = $('cm-ai-text').value.trim();
+    if (!text) { $('cm-hint').textContent = '先用一句话描述你的准则'; return; }
+    $('cm-hint').textContent = '起草中…';
+    try {
+      const j = await api('/dsh-rules/rule-draft', { text });
+      const d = j.draft || {};
+      $('cm-name').value = d.title || '';
+      $('cm-value').value = d.value || '';
+      $('cm-hint').textContent = `已起草（类别：${d.category || 'workflow'}，保存后为待校准状态）`;
+    } catch (e) { $('cm-hint').textContent = '起草失败：' + e.message; }
+  });
+  $('e-default').addEventListener('change', () => syncCoverageControls(selected ? all.find((x) => x.key === selected.key && x.scope === selected.scope) : null));
+  $('e-session-on').addEventListener('change', () => {
+    // 选「当前对话不生效」时，默认生效必须一起关掉（不能出现"默认生效但本对话不生效"）
+    if ($('e-session-on').value === 'no' && $('e-default').value === 'yes') $('e-default').value = 'no';
+    syncCoverageControls(selected ? all.find((x) => x.key === selected.key && x.scope === selected.scope) : null);
+  });
+  $('btn-save').addEventListener('click', save);
+  $('btn-cancel').addEventListener('click', closeDetail);
+  // 详情里「AI 帮我修改」：把这条准则带给助手，由它改
+  $('btn-ai-edit').addEventListener('click', () => {
+    const r = selected && all.find((x) => x.key === selected.key && x.scope === selected.scope);
+    if (!r) return;
+    closeDetail();
+    openAssistant(`帮我修改这条准则（key: ${r.key}）
+当前名称：${labelOf(r)}
+当前内容：${String(r.value).slice(0, 300)}
+我想怎么改：`);
+  });
+  // 新建弹窗交互
+  $('cm-cancel').addEventListener('click', closeCreateModal);
+  $('cm-ok').addEventListener('click', submitCreateModal);
+  $('cm-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submitCreateModal(); } });
+  $('cm-value').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); submitCreateModal(); } });
+  $('ask-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('ask-ok').click(); } });
+  $('create-modal').addEventListener('click', (e) => { if (e.target === $('create-modal')) closeCreateModal(); });
+  $('move-cancel').addEventListener('click', closeMoveDialog);
+  $('move-modal').addEventListener('click', (e) => { if (e.target === $('move-modal')) closeMoveDialog(); });
+  $('btn-history').addEventListener('click', () => openHistory(null));
+  $('history-close').addEventListener('click', closeHistory);
+  $('history-modal').addEventListener('click', (e) => { if (e.target === $('history-modal')) closeHistory(); });
+  $('detail-modal').addEventListener('click', (e) => { if (e.target === $('detail-modal')) closeDetail(); });
+  $('dm-close').addEventListener('click', closeDetail);
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (sortMenuEl) { closeSortMenu(); return; }
+    if (!$('topo-modal').hidden) { closeTopoModal(); return; }
+    if (!$('move-modal').hidden) { closeMoveDialog(); return; }
+    if (!$('history-modal').hidden) { closeHistory(); return; }
+    if (!$('assistant-modal').hidden) { closeAssistant(); return; }
+    if (!$('ask-modal').hidden) { $('ask-cancel').click(); return; }
+    if (!$('create-modal').hidden) closeCreateModal();
+    else if (!$('detail-modal').hidden) closeDetail();
+  });
+  $('btn-new').addEventListener('click', openCreate);
+  $('btn-reload').addEventListener('click', async () => { await load(); await audit(); });
+  $('btn-sync').addEventListener('click', async () => {
+    try {
+      const r = await api('/dsh-rules/sync', {});
+      const warn = (r.warnings && r.warnings.length) ? '；⚠ ' + r.warnings[0] : '';
+      notify((r.changed ? '已同步到全局' : '全局已是最新') + warn);
+    } catch (e) { notify('同步失败：' + e.message); }
+  });
+  $('btn-report').addEventListener('click', report);
+  $('btn-backups').addEventListener('click', backups);
+  // 准则列表缩放：像网页一样用 Ctrl+滚轮，或用工具栏的 －/＋
+  let listZoom = 1;
+  try { const z = Number(localStorage.getItem('dsh-rules:zoom')); if (z >= 0.6 && z <= 1.8) listZoom = z; } catch {}
+  function applyZoom() {
+    const t = $('tree');
+    if (t) { t.style.zoom = String(listZoom); t.style.width = (100 / listZoom) + '%'; }
+    const v = $('zoom-val'); if (v) v.textContent = Math.round(listZoom * 100) + '%';
+    try { localStorage.setItem('dsh-rules:zoom', String(listZoom)); } catch {}
+  }
+  function setZoom(z) { listZoom = Math.min(1.8, Math.max(0.6, Math.round(z * 10) / 10)); applyZoom(); }
+  applyZoom();
+  $('zoom-in').addEventListener('click', () => setZoom(listZoom + 0.1));
+  $('zoom-out').addEventListener('click', () => setZoom(listZoom - 0.1));
+  $('list-frame').addEventListener('wheel', (e) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault(); e.stopPropagation();
+    setZoom(listZoom + (e.deltaY < 0 ? 0.1 : -0.1));
+  }, { passive: false });
+  // 外层缩放：整个「准则列表」卡片（含工具栏、列表、缩放条本身）
+  let outerZoom = 1;
+  try { const z = Number(localStorage.getItem('dsh-rules:zoom-outer')); if (z >= 0.6 && z <= 1.8) outerZoom = z; } catch {}
+  function applyOuterZoom() {
+    const c = $('list-card-inner');
+    if (c) { c.style.zoom = String(outerZoom); c.style.width = (100 / outerZoom) + '%'; }
+    const v = $('ozoom-val'); if (v) v.textContent = Math.round(outerZoom * 100) + '%';
+    try { localStorage.setItem('dsh-rules:zoom-outer', String(outerZoom)); } catch {}
+  }
+  function setOuterZoom(z) { outerZoom = Math.min(1.8, Math.max(0.6, Math.round(z * 10) / 10)); applyOuterZoom(); }
+  applyOuterZoom();
+  $('ozoom-in').addEventListener('click', () => setOuterZoom(outerZoom + 0.1));
+  $('ozoom-out').addEventListener('click', () => setOuterZoom(outerZoom - 0.1));
+  $('list-card').addEventListener('wheel', (e) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    setOuterZoom(outerZoom + (e.deltaY < 0 ? 0.1 : -0.1));
+  }, { passive: false });
+  // 分类方案 & 逐级下钻
+  const resetPath = () => { drillPath = []; unassignedView = false; };
+  let notifyTimer = null;
+  function notify(msg) {
+    const el = $('stat'); if (!el) return;
+    el.textContent = msg;
+    clearTimeout(notifyTimer);
+    notifyTimer = setTimeout(() => { try { renderTree({ resetScroll: false }); } catch {} }, 2600);
+  }
+  async function treeAction(body) {
+    try { await api('/dsh-rules/tree', { ...body, schemeId }); await load(); return true; }
+    catch (e) { notify('操作失败：' + e.message); return false; }
+  }
+  $('scheme-select').addEventListener('change', async () => { schemeId = $('scheme-select').value; resetPath(); await load(); });
+  $('btn-undo').addEventListener('click', async () => {
+    try {
+      const j = await api('/dsh-rules/tree', { action: 'undo', schemeId })
+      drillPath = []; unassignedView = false; foldedIdx = null;
+      await load();
+      const left = j?.result?.undo?.remaining ?? 0;
+      notify('已撤回上一步' + (left > 0 ? `（还能继续撤回 ${left} 步）` : ''));
+    } catch (e) { notify('撤回失败：' + e.message); }
+  });
+  $('btn-scheme-new').addEventListener('click', async () => {
+    const title = await askText('新建分类方案', '', '例如：按客户 / 按交付阶段 / 按来源');
+    if (!title) return;
+    try { const j = await api('/dsh-rules/tree', { action: 'scheme-create', title }); schemeId = j.result.scheme.id; resetPath(); await load(); }
+    catch (e) { notify('建方案失败：' + e.message); }
+  });
+  $('btn-scheme-rename').addEventListener('click', async () => {
+    const cur = schemes.find((s) => s.id === schemeId); if (!cur) return;
+    const title = await askText('方案改名', cur.title);
+    if (!title || title === cur.title) return;
+    await treeAction({ action: 'scheme-rename', title });
+  });
+  $('btn-scheme-delete').addEventListener('click', async () => {
+    const cur = schemes.find((s) => s.id === schemeId);
+    if (!cur) return;
+    if (cur.builtin) return notify('内置方案不能删除');
+    if (!(await askConfirm('删除分类方案', `删除「${cur.title}」？规则本身不会删除，可以点「撤回」找回。`, true))) return;
+    try { await api('/dsh-rules/tree', { action: 'scheme-delete', schemeId }); schemeId = 'default'; resetPath(); await load(); }
+    catch (e) { notify('删除失败：' + e.message); }
+  });
+  $('btn-scheme-reset').addEventListener('click', async () => {
+    if (!(await askConfirm('恢复默认方案', '内置方案里的移动/改名会被重置，用户方案保留。可以点「撤回」找回上一步。'))) return;
+    await treeAction({ action: 'scheme-reset' });
+  });
+  $('btn-node-root').addEventListener('click', async () => {
+    const title = await askText('新建顶层分类', '', '名称例如：产出交付 / 工具与环境');
+    if (title) await treeAction({ action: 'node-add', title });
+  });
+  const refreshMotionBtn = () => {
+    const b = $('btn-motion');
+    if (!b) return;
+    b.textContent = motionOff ? '动画：关' : '动画：开';
+    b.title = motionOff ? '过渡动画已关闭，点一下开启' : '过渡动画已开启，点一下关闭';
+  };
+  refreshMotionBtn();
+  $('btn-motion').addEventListener('click', () => {
+    motionOff = !motionOff;
+    try { localStorage.setItem('dsh-rules:motion', motionOff ? 'off' : 'on'); } catch {}
+    refreshMotionBtn();
+    renderTree({ resetScroll: false });
+  });
+  // 更多菜单：点任意菜单项后自动收起；点外部也收起
+  const adminMenu = $('menu-admin');
+  if (adminMenu) {
+    adminMenu.addEventListener('click', (ev) => {
+      if (ev.target.closest && ev.target.closest('.menu-items button')) adminMenu.open = false;
+    });
+    document.addEventListener('click', (ev) => {
+      if (adminMenu.open && !adminMenu.contains(ev.target)) adminMenu.open = false;
+    });
+  }
+  $('tree').addEventListener('click', async (ev) => {
+    const t = ev.target;
+    const foldHandle = t.closest ? t.closest('[data-fold-seg]') : null;
+    if (foldHandle) {
+      ev.stopPropagation();
+      const idx = Number(foldHandle.dataset.foldSeg);
+      const segs = [...$('tree').querySelectorAll('.crumb-seg')];
+      // 折叠目标：上方所有层级段 + 当前段自己的胶囊行（保留当前选中栏）
+      const targets = [];
+      segs.forEach((s) => {
+        const n = Number(s.dataset.seg);
+        if (n < idx) targets.push(s);
+        else if (n === idx) { const caps = s.querySelector(':scope > .crumb-caps'); if (caps) targets.push(caps); }
+      });
+      const live = targets.filter((el) => !el.classList.contains('collapsed'));
+      if (!live.length) return;
+      foldedIdx = idx;
+      live.forEach((el) => { el.style.maxHeight = el.scrollHeight + 'px'; });
+      void $('tree').offsetHeight;
+      live.forEach((el) => { el.classList.add('collapsed'); el.style.maxHeight = '0px'; });
+      const restore = $('tree').querySelector('.crumbs-restore'); if (restore) restore.hidden = false;
+      return;
+    }
+    const unfoldAll = t.closest ? t.closest('[data-unfold-all]') : null;
+    if (unfoldAll) {
+      ev.stopPropagation();
+      foldedIdx = null;
+      const segs = [...$('tree').querySelectorAll('.crumb-seg.collapsed, .crumb-caps.collapsed')];
+      segs.forEach((s) => { s.classList.remove('collapsed'); s.style.maxHeight = s.scrollHeight + 'px'; });
+      if (segs.length) {
+        const clear = () => segs.forEach((s) => { s.style.maxHeight = ''; });
+        segs[0].addEventListener('transitionend', clear, { once: true });
+      }
+      const restore = $('tree').querySelector('.crumbs-restore'); if (restore) restore.hidden = true;
+      return;
+    }
+    const addBtn = t.closest ? t.closest('[data-add]') : null;
+    if (addBtn) {
+      ev.stopPropagation();
+      openCreateModal(addBtn.dataset.add, addBtn.dataset.addTo || null);
+      return;
+    }
+    // 移出分类 → 先选择移到哪个文件夹（或未分类/顶级）
+    const ruleMove = t.closest ? t.closest('[data-rule-move]') : null;
+    if (ruleMove) {
+      ev.stopPropagation();
+      openMoveDialog({ kind: 'rule', key: ruleMove.dataset.ruleMove });
+      return;
+    }
+    const sortBtn = t.closest ? t.closest('[data-sort]') : null;
+    if (sortBtn) {
+      ev.stopPropagation();
+      if (sortMenuEl) closeSortMenu();
+      else openSortMenu(sortBtn);
+      return;
+    }
+    const act = t.closest ? t.closest('[data-act]') : null;
+    const card = t.closest ? t.closest('.cat-card') : null;
+    if (act && card) {
+      ev.stopPropagation();
+      const id = card.dataset.node; const kind = act.dataset.act;
+      if (kind === 'rename') {
+        const cur = findNode(id);
+        const title = await askText('重命名分类', cur ? cur.title : '', '只改名字，不移动其中的准则。');
+        if (title && title !== (cur ? cur.title : '')) await treeAction({ action: 'node-rename', nodeId: id, title });
+      } else if (kind === 'move') {
+        openMoveDialog({ kind: 'node', nodeId: id });
+      } else if (kind === 'top') {
+        await treeAction({ action: 'node-move', nodeId: id, parentId: null, index: 0 });
+      } else if (kind === 'delete') {
+        const ok = await askConfirm('删除分类', '删除该分类及其子类？分类里的准则不会被删除，会回到未分类/自动归类。', true);
+        if (ok) await treeAction({ action: 'node-delete', nodeId: id });
+      }
+      return;
+    }
+    const reset = t.closest ? t.closest('[data-reset]') : null;
+    if (reset) { $('f-keyword').value = ''; animatePath(drillPath, false); return; }
+    const pathRow = t.closest ? t.closest('.path-row') : null;
+    if (pathRow) {
+      const back = pathRow.dataset.back;
+      if (back === 'root') { animatePath([], false); }
+      else if (back !== undefined) {
+        const nodeId = pathRow.dataset.node;
+        animatePath(drillPath.slice(0, Number(back)), false, { clickedId: nodeId });
+      }
+      return;
+    }
+    const sib = t.closest ? t.closest('.sib') : null;
+    if (sib) {
+      // 同层级切换：整块视图交叉淡出，避免新旧文字叠出重影
+      await switchSibling(Number(sib.dataset.level || 0), sib.dataset.goto);
+      return;
+    }
+    const rule = t.closest ? t.closest('.rule-item') : null;
+    if (rule) { openDetail(rule.dataset.key, rule.dataset.scope); return; }
+    const un = t.closest ? t.closest('[data-unassigned]') : null;
+    if (un) { await animatePath([], true); return; }
+    if (card) {
+      const id = card.dataset.node; if (!findNode(id)) return;
+      // 动画一：状态一 → 状态二（自己被压扁成路径行、同级收成小三角、子级生长出来）
+      await animatePath([...drillPath, id], false, { clickedId: id });
+    }
+  });
+  // 拖拽 = 移动（节点 / 规则），不复制；落在卡片上/下边缘 = 同级换位，落在中间 = 移入该卡片
+  let dragPayload = null;
+  let dropHint = null;   // { zone, mode: 'into'|'before'|'after' }
+  const dropZone = (target) => (target && target.closest ? target.closest('.cat-card, .path-row, .sib, .rule-item') : null);
+  const zoneMode = (ev, zone) => {
+    const r = zone.getBoundingClientRect();
+    const frac = r.height ? (ev.clientY - r.top) / r.height : 0.5;
+    const isRule = zone.classList.contains('rule-item');
+    if (isRule) return frac < 0.5 ? 'before' : 'after';
+    if (frac < 0.28) return 'before';
+    if (frac > 0.72) return 'after';
+    return 'into';
+  };
+  const clearDropHints = () => {
+    document.querySelectorAll('.drag-over, .drop-before, .drop-after').forEach((el) => el.classList.remove('drag-over', 'drop-before', 'drop-after'));
+    const b = $('drop-badge'); if (b) b.remove();
+    dropHint = null;
+  };
+  const showDropBadge = (ev, mode) => {
+    let b = $('drop-badge');
+    if (!b) { b = document.createElement('div'); b.id = 'drop-badge'; b.className = 'drop-badge'; document.body.appendChild(b); }
+    b.textContent = mode === 'into' ? '移入该分类' : (mode === 'before' ? '插到前面' : '插到后面');
+    b.style.left = (ev.clientX + 14) + 'px';
+    b.style.top = (ev.clientY + 12) + 'px';
+  };
+  document.addEventListener('dragstart', (ev) => {
+    const el = ev.target;
+    const cat = el && el.closest ? el.closest('.cat-card') : null;
+    const rule = el && el.closest ? el.closest('.rule-item') : null;
+    if (cat && cat.dataset.node) dragPayload = 'node:' + cat.dataset.node;
+    else if (rule) dragPayload = 'rule:' + rule.dataset.key;
+    else return;
+    ev.dataTransfer.effectAllowed = 'move';
+    try { ev.dataTransfer.setData('text/plain', dragPayload); } catch {}
+  });
+  document.addEventListener('dragend', () => { dragPayload = null; clearDropHints(); });
+  document.addEventListener('dragover', (ev) => {
+    const zone = dropZone(ev.target);
+    if (!zone) return;
+    ev.preventDefault();
+    clearDropHints();
+    const mode = zoneMode(ev, zone);
+    dropHint = { zone, mode };
+    zone.classList.add(mode === 'into' ? 'drag-over' : 'drop-' + mode);
+    showDropBadge(ev, mode);
+  });
+  document.addEventListener('drop', async (ev) => {
+    const zone = dropZone(ev.target);
+    if (!zone) return;
+    ev.preventDefault();
+    let payload = dragPayload;
+    if (!payload) { try { payload = ev.dataTransfer.getData('text/plain'); } catch {} }
+    const hint = dropHint || { zone, mode: zoneMode(ev, zone) };
+    clearDropHints();
+    const [type, val] = String(payload || '').split(':');
+    const targetId = zone.dataset.node;
+    dragPayload = null;
+    const mode = hint.mode || 'into';
+    if (!type || !val) return;
+    if (type === 'node') {
+      if (!targetId) return;
+      const meta = nodeMeta.get(targetId);
+      if (mode === 'into') {
+        if (targetId === val) return;
+        await treeAction({ action: 'node-move', nodeId: val, parentId: targetId });
+        return;
+      }
+      if (!meta) return;
+      const ownMeta = nodeMeta.get(val);
+      let index = meta.index + (mode === 'after' ? 1 : 0);
+      // 同一父级内向下移动时，先删除自身会让后面的索引前移
+      if (ownMeta && ownMeta.parentId === meta.parentId && ownMeta.index < index) index -= 1;
+      await treeAction({ action: 'node-move', nodeId: val, parentId: meta.parentId, index });
+    } else if (type === 'rule') {
+      const key = val;
+      const targetKey = zone.dataset.key;
+      if (targetKey === key) return;
+      if (mode !== 'into' && targetKey) {
+        const nodeId = zone.dataset.node || null;
+        const list = (tree.order || {})[nodeId || '__root__'] || [];
+        // 以当前可见顺序计算插入位置：目标规则在「该节点规则序列」里的位置
+        const visible = all.filter((r) => (r.nodeId || null) === nodeId)
+          .sort((a, b) => {
+            const pa = list.indexOf(a.key), pb = list.indexOf(b.key);
+            if (pa !== pb) return (pa < 0 ? Infinity : pa) - (pb < 0 ? Infinity : pb);
+            return (a.category.localeCompare(b.category)) || labelOf(a).localeCompare(labelOf(b), 'zh');
+          });
+        const ti = visible.findIndex((r) => r.key === targetKey);
+        let index = ti < 0 ? null : ti + (mode === 'after' ? 1 : 0);
+        if (index !== null) {
+          const cur = visible.findIndex((r) => r.key === key);
+          if (cur >= 0 && cur < index) index -= 1;
+        }
+        await treeAction({ action: 'rule-move', key, targetId: nodeId || '__unassigned__', index });
+        return;
+      }
+      if (!targetId || targetId === val) return;
+      await treeAction({ action: 'rule-move', key, targetId });
+    }
+  });
+  $('btn-delete').addEventListener('click', async () => {
+    if (!selected) return;
+    const r = all.find((x) => x.key === selected.key && x.scope === selected.scope);
+    if (!(await askConfirm('删除准则', '删除「' + labelOf(r) + '」？')) ) return;
+    try { await api('/dsh-rules/remove', { key: selected.key, scope: selected.scope }); closeDetail(); await load(); await audit(); }
+    catch (e) { $('save-hint').textContent = '删除失败：' + e.message; }
+  });
+  ['f-keyword','f-status'].forEach((id) => { const el = $(id); if (el) el.addEventListener('input', renderTree) });
+  // 适用面：先选维度；默认/当前对话两个维度再出「是/否」
+  const syncCovYn = () => {
+    const dim = $('f-coverage').value;
+    const show = dim === 'default' || dim === 'session' || dim === 'nondefault';
+    $('f-cov-yn').hidden = !show;
+    if (!show) $('f-cov-yn').value = 'yes';
+    $('f-cov-yn').title = dim === 'default'
+      ? '是 = 默认规则；否 = 非默认（局部规则）'
+      : dim === 'session'
+        ? '是 = 本对话正在生效；否 = 本对话不生效'
+        : '是 = 本对话已打开的非默认规则；否 = 其它';
+  };
+  $('f-coverage').addEventListener('change', () => { syncCovYn(); renderTree() });
+  $('f-cov-yn').addEventListener('change', renderTree);
+  syncCovYn();
+  fillSelects(); load(); audit();
+  setInterval(refreshAssistBadge, 20000);
+  // 独立窗口：/dsh-rules/ui?topo=<key> —— 整屏只有一张结构图（no buttons）
+  (() => {
+    const topoParam = new URLSearchParams(location.search).get('topo');
+    if (!topoParam) return;
+    document.body.classList.add('topo-standalone');
+    const page = document.createElement('div');
+    page.id = 'topo-page';
+    page.innerHTML = '<div id="topo-page-graph" class="topo-graph"></div><div class="topo-page-tip">滚轮缩放 · 拖动平移 · 点方框看该条准则（可编辑 / 让 AI 修改）</div>';
+    document.body.appendChild(page);
+    const graph = page.querySelector('#topo-page-graph');
+    attachTopoPanZoom(graph);
+    (async () => {
+      try {
+        const j = await api('/dsh-rules/topology?key=' + encodeURIComponent(topoParam));
+        lastTopology = j.topology || null;
+        if (!lastTopology) return;
+        document.title = '流程结构 · ' + (lastTopology.focus.title || lastTopology.focus.key);
+        renderTopo(graph, lastTopology, 1);
+      } catch (e) {
+        graph.innerHTML = '<div class="topo-empty">加载失败：' + esc(String(e.message || e)) + '</div>';
+      }
+    })();
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+[
+  { "key": "workflow.verify_before_claim", "value": "先查证据再下结论：区分「声称」和「证据」；优先一手来源，引用数字前先问怎么测的、条件是否可比。", "category": "workflow", "title": "先证据后结论", "source": "dsh-rules 默认准则", "status": "active", "coverage": "default" },
+  { "key": "workflow.report_style", "value": "结论先行：先给结论和关键理由，细节按需展开；不用流程化产出替代回答。", "category": "workflow", "title": "结论先行", "source": "dsh-rules 默认准则", "status": "active", "coverage": "default" },
+  { "key": "workflow.change_log", "value": "改动要能自解释：说清改了什么、为什么、影响哪里；批量或不可逆改动前先备份并留变更账。", "category": "workflow", "title": "改动留变更账", "source": "dsh-rules 默认准则", "status": "active", "coverage": "default" },
+  { "key": "workflow.batch_audit", "value": "批量/机械改动（替换、迁移、生成、格式化）必须：保留可重跑脚本，模式没匹配到要报错、不能静默跳过；以「只做最小机械变换」的结果为基线逐行 diff，差异必须可解释。", "category": "workflow", "title": "批量改动要基线审计", "source": "dsh-rules 默认准则", "status": "active", "coverage": "default" },
+  { "key": "safety.approval_first", "value": "不可逆、涉及账号、花钱或覆盖重要文件的操作先确认。", "category": "safety", "title": "重要操作先确认", "source": "dsh-rules 默认准则", "status": "active", "coverage": "default" },
+  { "key": "safety.delete_confirm", "value": "删除或覆盖前先确认，并核对目标绝对路径；不确定的条目标「待确认」，不要混进「已删除」。", "category": "safety", "title": "删除/覆盖前先确认", "source": "dsh-rules 默认准则", "status": "active", "coverage": "default" },
+  { "key": "safety.redact_secrets", "value": "展示命令、输出、日志、截图前先脱敏：密钥/凭据/token 一律写成 <REDACTED>。", "category": "safety", "title": "展示前先脱敏", "source": "dsh-rules 默认准则", "status": "active", "coverage": "default" },
+  { "key": "install.verify_checksum", "value": "下载安装包后校验官方哈希/签名；优先便携版与官方发布页，装到当前用户避免管理员权限。", "category": "install", "title": "下载后校验文件", "source": "dsh-rules 默认准则", "status": "active", "coverage": "default" },
+  { "key": "skill.hard_risk_gate", "value": "安装技能/插件前做体检：命中硬风险（curl|bash、反弹 shell、提示注入、密钥外传）一律不装；高分不等于安全，软风险只扣分不免责。", "category": "skill", "title": "技能与插件的安全红线", "source": "dsh-rules 默认准则", "status": "active", "coverage": "default" },
+  { "key": "model.schedule_window", "value": "长跑、批量、定时任务尽量排在模型计价的低谷/空闲时段，并避开机器不在线的时间段。", "category": "model", "title": "长任务排低谷时段", "source": "dsh-rules 默认准则", "status": "active", "coverage": "default" }
+]

@@ -1,0 +1,6 @@
+# dsh-rules bundle 层（v1.0.0）
+# 在 profile 的 dsh.profile.bundles 里加入 dsh-rules 后，装配时插入下面这行。
+- insert:
+    - id: dsh-rules
+      name: dsh-rules
+      config: {}
