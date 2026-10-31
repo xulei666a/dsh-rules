@@ -433,6 +433,7 @@ body.topo-standalone header, body.topo-standalone main { display:none; }
     <div style="display:flex;align-items:center;gap:8px">
       <h2 style="margin:0;font-size:16px">统一准则助手</h2>
       <span class="count" id="assistant-state" style="margin:0;flex:1;text-align:right;color:#6b7280"></span>
+      <button id="assistant-expand" class="ghost small" title="在左侧栏打开这个会话">↗</button>
       <button id="assistant-close" class="ghost small" title="关闭（Esc）">×</button>
     </div>
     <div id="assistant-msgs" style="flex:1;min-height:200px;max-height:52vh;overflow:auto;padding:6px 2px"></div>
@@ -1632,6 +1633,7 @@ key：${r.key}
   let assistantTimer = null;
   let assistantSig = '';
   let assistantWasBusy = false;
+  let assistantSid = '';
   const escA = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   function renderAssistant(messages, extra) {
     const box = $('assistant-msgs'); if (!box) return;
@@ -1655,6 +1657,7 @@ key：${r.key}
   async function loadAssistant() {
     try {
       const j = await api('/dsh-rules/assistant');
+      assistantSid = j.sessionId || assistantSid;
       renderAssistant(j.messages || []);
       const busy = !!j.busy;
       // 助手干完活（可能新建了文件夹/移动了规则）→ 自动刷新列表和分类，不用退出重进
@@ -1695,6 +1698,24 @@ key：${r.key}
     } catch (e) { $('assistant-state').textContent = '发送失败：' + e.message; }
     finally { $('assistant-send').disabled = false; }
   }
+  // 「放大」= 等价于在左侧栏点开这个助手会话（同源时直接点父页面里的会话行）
+  function openAssistantInSidebar() {
+    const sid = assistantSid || '';
+    try {
+      const w = window.parent && window.parent !== window ? window.parent : null;
+      const doc = w && w.document ? w.document : null;
+      if (doc) {
+        const nodes = [...doc.querySelectorAll('button,[role="button"],a,[data-session-id],[data-sid]')];
+        let row = nodes.find((el) => (el.getAttribute && (el.getAttribute('data-session-id') === sid || el.getAttribute('data-sid') === sid)))
+        row = row || nodes.find((el) => (el.textContent || '').trim() === '准则助手')
+        row = row || nodes.find((el) => (el.textContent || '').includes('准则助手'))
+        if (row) { row.click(); closeAssistant(); return; }
+      }
+    } catch (e) { /* 沙箱/跨域时走回退 */ }
+    if (sid && navigator.clipboard) navigator.clipboard.writeText(sid).catch(() => {});
+    notify('会话在左侧「准则会话分组 → 准则助手」；已复制会话 id ' + (sid || ''));
+  }
+  $('assistant-expand').addEventListener('click', openAssistantInSidebar);
   $('btn-assistant').addEventListener('click', () => openAssistant(''));
   $('btn-read-rules').addEventListener('click', runReadRules);
   $('assistant-close').addEventListener('click', closeAssistant);
