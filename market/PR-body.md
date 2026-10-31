@@ -4,6 +4,7 @@ Adds `xulei666a/dsh-rules` to the plugin list.
 
 - Repo: https://github.com/xulei666a/dsh-rules
 - Release: https://github.com/xulei666a/dsh-rules/releases/tag/v1.0.0
+- Install: `dsh plugin --profile web add github:xulei666a/dsh-rules` (no build step, no npm)
 - Category: `memory` — it manages the agent's persistent guidelines/rules.
 - Entry file: `data/plugins/xulei666a__dsh-rules.yml` (only this file is added; no generated README changes)
 

@@ -7,7 +7,7 @@ Keeps every agent guideline in **one rule library**: manage, resolve, sync, audi
 - **Coverage**: `default` (always-on) / `local` (routed by task domain) + per-conversation pins
 - **23 model tools · 23 host routes · admin page + right-sidebar panel + in-panel assistant**
 
-> Version **1.0.0** (first public release). See [CHANGELOG.md](CHANGELOG.md) and [docs/QUICKSTART.md](docs/QUICKSTART.md).
+> Version **1.0.1** (first public release). See [CHANGELOG.md](CHANGELOG.md) and [docs/QUICKSTART.md](docs/QUICKSTART.md).
 
 ## Features
 
@@ -37,7 +37,8 @@ The plugin directory also needs junctions for `@deepseek-ai/{dsh-tools,cordis,sc
 ## Quick start
 
 1. Restart DSH, open the **Unified rules** tab (or `http://127.0.0.1:<DSH port>/dsh-rules/ui`).
-2. First run seeds **10 generic default rules**.
+2. **First run is an empty library** (no seeded rules — every user differs). Click **Read rules** to collect from existing sources, or tell the assistant “remember this: …”.
+   - Want a generic starter set? Put `{"seedDefaults": true}` in `~/.dsh/rules/config.json`, delete `rules.jsonl`, restart.
 3. Click **Read rules** to collect existing guidelines from the system (skills / plugins / AGENTS / EXPERIENCE / style-packs).
 4. Open the **assistant** and ask: “check the rule library”, “calibrate pending rules”, “classify by my own habits”.
 5. Run `rules_sync` to push changes into `AGENTS.md`.

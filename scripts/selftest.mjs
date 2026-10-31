@@ -36,12 +36,19 @@ try {
   check('defaults 每条都通过 normalizeRule', badDefaults.length === 0, badDefaults.map((r) => r.key).join(','))
   check('defaults 无个人私有内容', defaults.filter((r) => /[A-Za-z]:\\Users\\|\/home\/|\/Users\//.test(JSON.stringify(r))).length === 0)
 
+  // 1.5) 首次安装必须是空库（面向他人发布，不预置任何准则）
+  check('新安装默认空库（不预置准则）', store.loadRules().length === 0, `实际 ${store.loadRules().length} 条`)
+
   // 2) 规则 CRUD
   store.upsertRule({ key: 'selftest.paths', value: 'D:/work', category: 'paths', status: 'active', tags: ['install'] }, { sync: false })
   check('upsert 后可读到', store.loadRules().some((r) => r.key === 'selftest.paths'))
   check('解析生效', store.resolveEffective(store.loadRules(), { keys: ['selftest.paths'] }).length === 1)
   store.removeRule('selftest.paths')
   check('remove 后消失', !store.loadRules().some((r) => r.key === 'selftest.paths'))
+
+  // 1.6) 为后续分类/路由测试准备样本（新装空库不再有内置规则）
+  store.upsertRule({ key: 'selftest.sample_ppt', value: '做 PPT 先列大纲，每页 2 个要点', title: 'PPT 示例', category: 'style', coverage: 'default', tags: ['ppt'], status: 'active' }, { sync: false })
+  store.upsertRule({ key: 'selftest.sample_report', value: '季度汇报结论先行', title: '汇报示例', category: 'workflow', coverage: 'local', appliesTo: ['report'], tags: [], status: 'active' }, { sync: false })
 
   // 3) 内置方案（默认分类树）
   const d = tree.getScheme('default')

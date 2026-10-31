@@ -26,6 +26,7 @@ import {
   loadHistory, historyCount,
   setSessionProfile, loadSessionProfile, clearSessionProfile, listSessionProfiles, sessionDefaultRules,
   pinSessionRules,
+  RULES_DIR, saveRules,
 } from '../lib/store.js'
 import { tagsOf } from '../lib/tags.js'
 import { checkSources, harvestPlan, recordSources, discoverSources, loadLedger, addRoot, addIgnore, sourceRootSummary } from '../lib/sources.js'
@@ -75,6 +76,19 @@ try {
       const per = Object.entries(r.perSource).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${k}:${v}`).join('、')
       console.log(`${r.dryRun ? '预览（未写入）' : '已收录'}：候选 ${r.candidates} → 新增 ${r.added}，跳过重复 ${r.skipped}；已抑制删除项 ${r.suppressedSkipped || 0}；当前库 ${loadRules().length} 条`)
       console.log('来源：' + per)
+    }
+  } else if (cmd === 'reset') {
+    const all = loadRules()
+    if (!opt.yes) {
+      console.log(`将清空全部 ${all.length} 条规则（清空前会自动备份 rules.jsonl）。确认请加 --yes：`)
+      console.log('  node scripts/cli.mjs reset --yes')
+    } else {
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+      const src = path.join(RULES_DIR, 'rules.jsonl')
+      if (fs.existsSync(src)) fs.copyFileSync(src, path.join(RULES_DIR, `rules.jsonl.bak-${stamp}`))
+      saveRules([])
+      const s = syncAgents({ silent: true })
+      console.log(`已清空为 0 条；备份：rules.jsonl.bak-${stamp}；AGENTS 托管段：${s.changed ? '已更新' : '无变化'}`)
     }
   } else if (cmd === 'issues') {
     const i = scanIssues()
