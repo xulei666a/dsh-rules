@@ -1629,6 +1629,7 @@ key：${r.key}
   // ---------- 助手会话（面板 ↔ 真实 DSH 会话） ----------
   let assistantTimer = null;
   let assistantSig = '';
+  let assistantWasBusy = false;
   const escA = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   function renderAssistant(messages, extra) {
     const box = $('assistant-msgs'); if (!box) return;
@@ -1653,7 +1654,11 @@ key：${r.key}
     try {
       const j = await api('/dsh-rules/assistant');
       renderAssistant(j.messages || []);
-      $('assistant-state').textContent = j.busy ? '处理中…' : '';
+      const busy = !!j.busy;
+      // 助手干完活（可能新建了文件夹/移动了规则）→ 自动刷新列表和分类，不用退出重进
+      if (assistantWasBusy && !busy) { try { await load(); } catch {} }
+      assistantWasBusy = busy;
+      $('assistant-state').textContent = busy ? '处理中…' : '';
       if (!$('assistant-modal').hidden) markAssistantSeen(j.messages || []);
     } catch (e) { $('assistant-state').textContent = '读取失败：' + e.message; }
   }
@@ -1665,7 +1670,13 @@ key：${r.key}
     assistantTimer = setInterval(loadAssistant, 2500);
     setTimeout(() => $('assistant-input').focus(), 50);
   }
-  function closeAssistant() { $('assistant-modal').hidden = true; clearInterval(assistantTimer); assistantTimer = null; }
+  function closeAssistant() {
+    $('assistant-modal').hidden = true;
+    clearInterval(assistantTimer);
+    assistantTimer = null;
+    assistantWasBusy = false;
+    load(); // 关闭时兜底刷新一次（助手可能刚改过分类/规则）
+  }
   async function sendAssistant() {
     const text = $('assistant-input').value.trim();
     if (!text) return;
@@ -1695,7 +1706,7 @@ key：${r.key}
     t.style.height = Math.min(140, t.scrollHeight) + 'px';
   });
   $('assistant-reset').addEventListener('click', async () => {
-    if (!(await askConfirm('新会话', '结束后下一条消息会新建一条助手会话（旧会话保留在会话列表里）。'))) return;
+    if (!(await askConfirm('新会话', '下一条消息会新建一条助手会话（旧会话会被替代；助手会话不会出现在左侧栏）。'))) return;
     try { await api('/dsh-rules/assistant', { action: 'reset' }); assistantSig = ''; $('assistant-msgs').innerHTML = ''; $('assistant-msgs').dataset.rendered = ''; $('assistant-state').textContent = '已重置'; }
     catch (e) { $('assistant-state').textContent = '重置失败：' + e.message; }
   });

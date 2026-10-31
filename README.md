@@ -7,7 +7,7 @@
 - **适用面**：`default`（默认常驻）/ `local`（按任务域，按需路由）+ 会话级「本对话生效」
 - **模型工具 23 个 · 宿主路由 23 条 · 管理页 + 右栏面板 + 面板内助手**
 
-> 当前版本 **1.0.1**（首个公开版本）。变更见 [CHANGELOG.md](CHANGELOG.md)。
+> 当前版本 **1.0.2**（首个公开版本）。变更见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 特性
 
@@ -16,7 +16,7 @@
 - **默认 vs 局部**：默认规则进 AGENTS（体积可控）；局部规则按任务域路由，不占常驻预算。
 - **读取规则**：一键扫描 `~/.dsh/AGENTS.md` 手写段、`EXPERIENCE.md`、项目 AGENTS.md、用户技能、插件自带技能、style-packs，增量收录并去重。
 - **问题台账**：按**归属**分组（待复核 / 冲突 / 同标题多条 / 重复内容 / 来源失效 / 抑制清单 / 字段异常 / 适用面），通过助手汇报并给处理建议。
-- **助手会话**：面板里的「助手」驱动一条真实 DSH 会话，做批量操作、导入技能、起草规则、个性化分类、校准与排错；角色约束只在首条消息注入一次。
+- **助手会话**：面板里的「助手」驱动一条真实 DSH 会话（以 `subagent` 子会话创建，不进左侧栏），做批量操作、导入技能、起草规则、个性化分类、校准与排错；职责写在 `~/.dsh/rules/ASSISTANT.md`，用户消息原样发送，不再拼大段约束；助手完成任务后面板自动刷新。
 - **语义路由**：A 档零依赖；B 档可选本地 embedding，按任务描述命中领域与相关规则。
 - **分类树**：基准 5 大类（产出交付 / 记忆与底线 / 工作方式 / 工具与环境 / 待复核），任意层级、多套方案、拖拽只移动不复制。
 - **来源闸口与收割**：来源账、批量提取提案、合并去重、覆盖审计；`rules_collect` 做增量收录。
@@ -117,6 +117,8 @@ node scripts/cli.mjs groups show default       # 分类树
 ~/.dsh/rules/groups.json               分类方案 / 树（v2）
 ~/.dsh/rules/session-overrides.json    会话级生效（pins，7 天 TTL）
 ~/.dsh/rules/read-state.json           上次读取时间 + 每条指纹
+~/.dsh/rules/ASSISTANT.md              面板助手的职责说明（助手工作区 AGENTS.md 同步此内容）
+~/.dsh/rules/assistant-context.json    助手上下文（面板所在会话 tag，用于「本对话生效」）
 ~/.dsh/rules/collect-suppressed.json   删除抑制清单（读取时跳过）
 ~/.dsh/rules/history.jsonl             改动记录
 ~/.dsh/rules/coverage-map.json         适用面映射
