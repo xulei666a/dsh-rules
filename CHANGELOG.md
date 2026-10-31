@@ -2,6 +2,14 @@
 
 本文件记录**发布版本**的变更；0.x 开发期的完整逐条历史见 [`docs/CHANGELOG-full.md`](docs/CHANGELOG-full.md)。
 
+## 1.0.5 (2026-10-31) — 真正创建分组 + 放大跳转
+
+- **修复「未分组」**：仅把 `cwd` 指到新目录并不会在 DSH 里生成分组；现在通过宿主 `workspaceController.create({path})` 注册工作区，再用 `workspace/rename` 命名为「准则会话分组」，助手会话才会出现在该分组下。
+- 旧的「未分组」助手会话会用 `workspace/archiveSession` 归档，从分组视图里移除。
+- **放大按钮加强**：父页面遍历包含 Shadow DOM；先按 sessionId、再按标题「准则助手」找到会话行并触发点击（等价于左侧栏点击）。读不到父页面时退回复制会话 id 并提示。
+- 新增诊断接口：`GET /dsh-rules/debug-session-controller` 增加 `workspaceAvailable` / `workspaceMethods`；`POST /dsh-rules/assistant/workspace` 可单独触发「创建/命名分组」。
+- 自检 111 项、客户端 4 项通过。
+
 ## 1.0.4 (2026-10-31) — 助手分组 + 放大按钮
 
 - **助手会话单独分组**：助手会话的 `cwd` 改为 `~/.dsh/rules/准则会话分组`，DSH 会按目录名生成侧栏分组，所有助手对话都收进「准则会话分组」，不再混在用户的工作区里。

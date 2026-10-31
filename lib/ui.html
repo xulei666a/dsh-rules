@@ -1698,18 +1698,32 @@ key：${r.key}
     } catch (e) { $('assistant-state').textContent = '发送失败：' + e.message; }
     finally { $('assistant-send').disabled = false; }
   }
-  // 「放大」= 等价于在左侧栏点开这个助手会话（同源时直接点父页面里的会话行）
+  // 「放大」= 等价于在左侧栏点开这个助手会话（同源时直接点父页面里的会话行，含 Shadow DOM）
+  function collectAll(root, out, depth) {
+    if (!root || depth > 8) return out;
+    const all = root.querySelectorAll ? [...root.querySelectorAll('*')] : [];
+    for (const el of all) {
+      out.push(el);
+      if (el.shadowRoot) collectAll(el.shadowRoot, out, depth + 1);
+    }
+    return out;
+  }
   function openAssistantInSidebar() {
     const sid = assistantSid || '';
     try {
       const w = window.parent && window.parent !== window ? window.parent : null;
-      const doc = w && w.document ? w.document : null;
-      if (doc) {
-        const nodes = [...doc.querySelectorAll('button,[role="button"],a,[data-session-id],[data-sid]')];
-        let row = nodes.find((el) => (el.getAttribute && (el.getAttribute('data-session-id') === sid || el.getAttribute('data-sid') === sid)))
-        row = row || nodes.find((el) => (el.textContent || '').trim() === '准则助手')
-        row = row || nodes.find((el) => (el.textContent || '').includes('准则助手'))
-        if (row) { row.click(); closeAssistant(); return; }
+      const doc = (w && w.document) || document;
+      const all = collectAll(doc, [], 0);
+      const clickable = (el) => el.closest('button,[role="button"],a,[data-session-id],[data-sid],li') || el;
+      // 1) 先按 sessionId 精确找
+      let hit = sid ? all.find((el) => el.getAttribute && (el.getAttribute('data-session-id') === sid || el.getAttribute('data-sid') === sid)) : null;
+      // 2) 再按标题「准则助手」找（文本完全等于，或父元素里包含）
+      if (!hit) hit = all.find((el) => el.children.length === 0 && (el.textContent || '').trim() === '准则助手');
+      if (!hit) hit = all.find((el) => (el.textContent || '').trim() === '准则助手');
+      if (hit) {
+        clickable(hit).click();
+        closeAssistant();
+        return;
       }
     } catch (e) { /* 沙箱/跨域时走回退 */ }
     if (sid && navigator.clipboard) navigator.clipboard.writeText(sid).catch(() => {});
