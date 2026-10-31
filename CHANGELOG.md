@@ -2,6 +2,13 @@
 
 本文件记录**发布版本**的变更；0.x 开发期的完整逐条历史见 [`docs/CHANGELOG-full.md`](docs/CHANGELOG-full.md)。
 
+## 1.0.9 (2026-10-31) — 新会话可命名
+
+- 「新会话」按钮改成**输入名字**（不再只是确认框）：新会话标题显示为 **「准则助手-名字」**；留空则仍为「准则助手」。
+- 名字保存在 `~/.dsh/rules/assistant.json` 的 `name` 字段；创建会话时用 `sessionController.rename` 设置标题，重启/复用时保持。
+- 会话仍创建在「准则会话分组」工作区内（workspaceId 方式）。
+- 自检 111 项、客户端 4 项通过。
+
 ## 1.0.8 (2026-10-31) — 用 workspaceId 建会话（真进分组）
 
 - 读宿主源码确认：`sessionController.create` 接受 **workspaceId 或 cwd，二者互斥**；带 `workspaceId` 时会用 `workspaceRegistry.get(id)` 并让会话成为该工作区成员（这正是侧栏分组的来源）。

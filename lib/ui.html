@@ -1780,9 +1780,16 @@ key：${r.key}
     t.style.height = Math.min(140, t.scrollHeight) + 'px';
   });
   $('assistant-reset').addEventListener('click', async () => {
-    if (!(await askConfirm('新会话', '下一条消息会新建一条助手会话（旧会话会保留在左侧栏；普通对话不会再新增会话条目）。'))) return;
-    try { await api('/dsh-rules/assistant', { action: 'reset' }); assistantSig = ''; $('assistant-msgs').innerHTML = ''; $('assistant-msgs').dataset.rendered = ''; $('assistant-state').textContent = '已重置'; }
-    catch (e) { $('assistant-state').textContent = '重置失败：' + e.message; }
+    // 新会话可以起名字：标题显示「准则助手-名字」
+    const name = await askText('新会话', '', '给这条助手会话起个名字（左侧标题显示为「准则助手-名字」；留空就是「准则助手」）');
+    if (name === null) return;
+    try {
+      await api('/dsh-rules/assistant', { action: 'reset', name });
+      assistantSig = '';
+      $('assistant-msgs').innerHTML = '';
+      $('assistant-msgs').dataset.rendered = '';
+      $('assistant-state').textContent = name ? '已重置：准则助手-' + name : '已重置';
+    } catch (e) { $('assistant-state').textContent = '重置失败：' + e.message; }
   });
   // 新建准则弹窗里的「一句话起草」
   $('cm-ai-draft').addEventListener('click', async () => {
