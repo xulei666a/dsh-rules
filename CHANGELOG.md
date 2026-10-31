@@ -2,64 +2,33 @@
 
 本文件记录**发布版本**的变更；0.x 开发期的完整逐条历史见 [`docs/CHANGELOG-full.md`](docs/CHANGELOG-full.md)。
 
-## 1.0.9 (2026-10-31) — 新会话可命名
+## 1.1.0 (2026-10-31) — 助手体验大修
 
-- 「新会话」按钮改成**输入名字**（不再只是确认框）：新会话标题显示为 **「准则助手-名字」**；留空则仍为「准则助手」。
-- 名字保存在 `~/.dsh/rules/assistant.json` 的 `name` 字段；创建会话时用 `sessionController.rename` 设置标题，重启/复用时保持。
-- 会话仍创建在「准则会话分组」工作区内（workspaceId 方式）。
-- 自检 111 项、客户端 4 项通过。
+> 1.0.2–1.0.9 的修正合并为这一个版本（此前只发布过 1.0.0 / 1.0.1）。
 
-## 1.0.8 (2026-10-31) — 用 workspaceId 建会话（真进分组）
+### 助手会话
 
-- 读宿主源码确认：`sessionController.create` 接受 **workspaceId 或 cwd，二者互斥**；带 `workspaceId` 时会用 `workspaceRegistry.get(id)` 并让会话成为该工作区成员（这正是侧栏分组的来源）。
-- 1.0.7 用 cwd 建会话再 `insertSessionBefore` 挂组，但该接口只用于“在工作区内移动会话”，非成员挂不进去 → 仍显示默认位置。现在改为：**优先 `create({ sessionId, workspaceId })`**，失败才退回 cwd，并记录 `grouped` 标记；未确认入组的旧会话下次发送时自动换新会话。
-- 验证：自检 111 项通过；重启后发消息应出现在「准则会话分组」下。
-- 放大按钮改进：先找会话行，找不到则先点开「准则会话分组」再找；点击用 pointer/mouse/click 全套事件，兼容 Shadow DOM。
+- **独立分组**：助手会话通过宿主 `workspaceController.create({path})` 注册「准则会话分组」工作区，再用 `create({sessionId, workspaceId})` 建会话（`workspaceId` 与 `cwd` 在宿主里互斥，之前两个一起传会静默失败），会话真正落在该分组里，不再进「未分组/默认」。
+- **会话可命名**：「新会话」按钮改为输入名字，标题显示为 **「准则助手-名字」**（留空则「准则助手」）；名字存 `assistant.json` 的 `name`。
+- **不再堆积**：正常对话固定复用一条会话；只有点「新会话」才换。
+- **消息不再拼大段约束**：职责说明移到 `~/.dsh/rules/ASSISTANT.md`，并同步为助手工作区 `AGENTS.md`；用户消息原样发送，「读取规则」只发一条简短任务。
+- **面板自动刷新**：助手完成任务后（新建文件夹、移动规则等）自动重载列表与分类；关闭弹窗也兜底刷新。
+- **弹窗层级修复**：确认/输入框 `z-index` 高于助手弹窗，不用先关弹窗。
+- 「↗ 放大」按钮保留：尝试在左侧栏定位并点开对应会话；宿主 iframe 受限时退回复制会话 id 提示。
 
-## 1.0.7 (2026-10-31) — 发送失败修复
+### 默认行为
 
-- **修复「发送失败」**：宿主 `session/create` 的 `workspaceId` 与 `cwd` 是**互斥**的（传两个会校验失败，之前被吞掉 → 会话没建出来 → `session not found`）。现在改成：先用 `cwd` 建会话，再用 `workspaceController.insertSessionBefore({workspaceId, sessionId})` 把会话挂进「准则会话分组」。
-- 状态里的会话不存在（历史残留 id）时自动重建并重试投递；创建错误不再被吞，会显示出具体原因。
-- 自助手状态修正：复用已存在的 `rules-assistant-main` 会话。
-- 自检 111 项、客户端 4 项通过。
+- **默认空库**（1.0.1 起）：首次安装不预置准则；需要示例可在 `~/.dsh/rules/config.json` 设 `{"seedDefaults": true}` 后删 `rules.jsonl` 重启。
+- 新增 CLI `node scripts/cli.mjs reset --yes`：清空规则库（先自动备份）。
 
-## 1.0.6 (2026-10-31) — 会话真正进分组
+### 诊断
 
-- **修复「分组建了但对话在默认位置」**：`sessionController.create` 必须同时带 `workspaceId`，只给 `cwd` 时 DSH 会把会话放进默认/未分组。现在先 `workspaceController.create` 拿到 `workspaceId`，再带 `workspaceId + cwd` 建会话；`assistant.json` 记录 `workspaceId`，不匹配时自动换新会话并归档旧的。
-- **放大按钮改进**：在父页面（含 Shadow DOM）里按「固定标题 → sessionId → 首条用户消息前 12 字」多候选匹配会话行并点击；找不到时提示里会带诊断信息（`parent=yes/no`、`nodes=N`），便于判断是不是沙箱限制。
-- 自检 111 项、客户端 4 项通过。
+- `GET /dsh-rules/debug-session-controller` 返回 `workspaceAvailable` / `workspaceMethods`。
+- `POST /dsh-rules/assistant/workspace` 可单独触发「创建/命名分组」。
 
-## 1.0.5 (2026-10-31) — 真正创建分组 + 放大跳转
+### 质量
 
-- **修复「未分组」**：仅把 `cwd` 指到新目录并不会在 DSH 里生成分组；现在通过宿主 `workspaceController.create({path})` 注册工作区，再用 `workspace/rename` 命名为「准则会话分组」，助手会话才会出现在该分组下。
-- 旧的「未分组」助手会话会用 `workspace/archiveSession` 归档，从分组视图里移除。
-- **放大按钮加强**：父页面遍历包含 Shadow DOM；先按 sessionId、再按标题「准则助手」找到会话行并触发点击（等价于左侧栏点击）。读不到父页面时退回复制会话 id 并提示。
-- 新增诊断接口：`GET /dsh-rules/debug-session-controller` 增加 `workspaceAvailable` / `workspaceMethods`；`POST /dsh-rules/assistant/workspace` 可单独触发「创建/命名分组」。
-- 自检 111 项、客户端 4 项通过。
-
-## 1.0.4 (2026-10-31) — 助手分组 + 放大按钮
-
-- **助手会话单独分组**：助手会话的 `cwd` 改为 `~/.dsh/rules/准则会话分组`，DSH 会按目录名生成侧栏分组，所有助手对话都收进「准则会话分组」，不再混在用户的工作区里。
-- **会话标题固定**：创建时调用 `sessionController.rename` 把标题设为「准则助手」，侧栏一眼可认。
-- **「放大」按钮**：助手弹窗标题栏新增 `↗`。同源时直接在父页面侧栏里点开对应会话（等价于用户自己在左侧栏点击）；取不到父页面时退回复制会话 id 并提示位置。
-- 旧助手会话（之前在 profile 工作区）与状态已清理；升级后第一次发消息会新建到「准则会话分组」下。
-- 自检 111 项、客户端 4 项通过。
-
-## 1.0.3 (2026-10-31) — 助手会话修复
-
-- **修复「新会话后发送报错」**：1.0.2 用 session store 建的 `origin:'subagent'` 会话不允许 `sessionController.prompt`（宿主报 `is owned by subagent routing`）。改为普通会话创建；遇到历史遗留的 subagent 会话会自动换新 id 重试。
-- **侧栏不再堆积**：正常对话固定复用一条助手会话（`rules-assistant-main`），不再每条消息新建会话项目；只有主动点「新会话」才换 id。
-- **确认框层级修复**：「新会话」确认框的 `z-index` 提到助手弹窗之上，不需要先关掉原弹窗才能点取消/确定。
-- 说明：DSH 宿主目前没有向插件开放「隐藏会话」的接口（仅对子代理内部投递隐藏），所以助手会话仍会在侧栏保留 1 个条目；这是当前 API 下的最优解。
-- 自检 111 项、客户端 4 项通过。
-
-## 1.0.2 (2026-10-31) — 面板助手体验
-
-- **助手会话不再进左侧栏**：助手以 `origin: 'subagent'` 的 DSH 会话创建（侧栏隐藏这类会话），不再每问一次生成一个对话项目。
-- **消息不再拼大段约束**：职责说明移到 `~/.dsh/rules/ASSISTANT.md`，并同步到助手工作区 `~/.dsh/rules/assistant/AGENTS.md`（DSH 作为工作区指令自动加载）。用户发什么，助手收到的就是什么；「读取规则」只发一条简短任务。
-- **面板自动刷新**：助手完成任务（新建文件夹、移动规则等）后面板检测到忙碌结束会自动重载列表与分类；关闭助手弹窗时兜底刷新。
-- 助手上下文（面板所在会话 tag）写入 `~/.dsh/rules/assistant-context.json`，供「本对话生效」使用。
-- 自检 111 项、客户端 4 项通过。
+- 自检 111 项 + 客户端 4 项全过；Node >= 20；MIT。
 
 ## 1.0.1 (2026-10-31) — 默认空库
 
@@ -68,9 +37,9 @@
 - 原因：不同用户的规则完全不同，预置 10 条通用准则会让新用户以为「读取规则」读出了内容，也不符合「空库起步」的预期。
 - 现在：`rules.jsonl` 不存在时创建**空库**；面板首次打开 0 条。
 - 需要示例/通用起点时：`~/.dsh/rules/config.json` 写 `{"seedDefaults": true}`，删除 `rules.jsonl` 后重启，会写入 `rules/defaults.json` 的 10 条示例。
-- 新增 CLI：`node scripts/cli.mjs reset --yes`（清空前自动备份 `rules.jsonl`），用于把已有安装也恢复成空库。
+- 新增 CLI：`node scripts/cli.mjs reset --yes`（清空前自动备份 `rules.jsonl`）。
 - 自检增加「新安装默认空库（不预置准则）」用例（111 项）。
-- 市场安装改为从 GitHub 源码安装（无构建步骤），不再依赖旧 release 附件，保证新装用户拿到此版本。
+- 市场安装改为从 GitHub 源码安装（无构建步骤），不再依赖旧 release 附件。
 
 ## 1.0.0 (2026-10-31) — 初代发布
 
@@ -84,7 +53,7 @@
 - **模型工具 23 个**：查询/解析/写入/删除/审计/同步/导出/报告/回滚/路由/分类树/来源/会话/批量/适用面/起草/历史/拓扑/读取/标记读取/恢复/收录/问题台账。
 - **宿主路由 23 条**：`/dsh-rules/{list,audit,coverage,route,tree,set,sync,remove,report,sources,history,session,topology,read-state,read,assistant,skill-import,rule-draft,backups,rollback,project,ui}` 等。
 - **管理页 + 右栏面板**：单文件 HTML（无构建），逐级下钻分类、拖拽归类、方案切换、搜索/筛选、缩放、动画。
-- **助手会话**：面板内「助手」按钮驱动一条真实 DSH 会话；支持批量改规则、导入技能、起草规则、个性化分类；角色约束只在会话首条消息注入一次，之后原样收发。
+- **助手会话**：面板内「助手」按钮驱动一条真实 DSH 会话；支持批量改规则、导入技能、起草规则、个性化分类。
 - **读取规则**：一键扫描 AGENTS.md 手写段 / EXPERIENCE.md / 项目 AGENTS.md / 用户技能 / 插件自带技能 / style-packs，长条目拆分、关键词加权分类、近重复去重；删除过的收集规则写入抑制清单，不会被再次读取复活。
 - **问题台账**：按归属分组（待复核 / 冲突 / 同标题多条 / 重复内容 / 来源失效 / 抑制清单 / 字段异常 / 适用面），通过助手汇报并给处理建议。
 - **语义路由**：A 档零依赖（标签 + 同义词 + 二元组 + 分类加权）；B 档可选本地 embedding（`multilingual-e5-small`，缓存于 `~/.dsh/rules/embeddings.json`）。
@@ -94,7 +63,6 @@
 ### 数据与兼容
 
 - 数据文件：`rules.jsonl`、`groups.json`（v2）、`session-overrides.json`、`read-state.json`、`collect-suppressed.json`、`history.jsonl`、`coverage-map.json`。
-- 首次加载从 `rules/defaults.json` 播种 **10 条通用默认准则**（不含个人路径/账号/业务数据）。
 - Node >= 20；MIT。
 
 ### 已知限制
