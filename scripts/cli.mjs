@@ -355,6 +355,13 @@ try {
     console.log(`领域标签：${r.tags.join('、') || '（无）'}`)
     console.log(`建议领域：${r.domains.join('、') || '（无）'}`)
     for (const x of r.rules) console.log(`  [${x.score.toFixed(2)}] ${x.key} | ${x.title} → ${String(x.value).slice(0, 80)}`)
+    if (r.hasBranchConflict && Array.isArray(r.decisions)) {
+      console.log('\n⚠ 决策冲突（同一决策点有多个分支，运行时必须让用户选）：')
+      for (const d of r.decisions.filter((x) => x.conflict)) {
+        console.log(`  · ${d.decision}`)
+        for (const o of d.options) console.log(`      - ${o.option}（${o.kind === 'node' ? '文件夹' : '规则'} · ${(o.rules || []).length} 条）`)
+      }
+    }
   } else if (cmd === 'embed') {
     const sub = positional[0] ?? 'status'
     if (sub === 'status') {

@@ -116,6 +116,15 @@
   .rule-item.copy { background:color-mix(in srgb, #60a5fa 16%, var(--card)); border-color:color-mix(in srgb, #3b82f6 36%, var(--line)); }
   @media (prefers-color-scheme: dark) { .rule-item.copy { background:color-mix(in srgb, #60a5fa 26%, var(--card)); } }
   .rule-item.copy .name::after { content:'副本'; margin-left:6px; font-size:10px; font-weight:400; color:#2563eb; opacity:.85; }
+  /* 分支冲突：同一决策点有多个生效选项 → 橙色卡片，点「冲突」看是哪几条 */
+  .rule-item.conflict { background:color-mix(in srgb, #f97316 16%, var(--card)); border-color:color-mix(in srgb, #f97316 42%, var(--line)); }
+  @media (prefers-color-scheme: dark) { .rule-item.conflict { background:color-mix(in srgb, #f97316 24%, var(--card)); } }
+  .rule-item.conflict .conflict-chip { background:#f97316; color:#fff; border-color:transparent; cursor:pointer; }
+  .cat-card.conflict { background:color-mix(in srgb, #f97316 14%, var(--card)); border-color:color-mix(in srgb, #f97316 42%, var(--line)); }
+  .cat-card.conflict .conflict-chip { background:#f97316; color:#fff; border-color:transparent; cursor:pointer; }
+  .conflict-opt { display:flex; gap:8px; align-items:center; justify-content:space-between; padding:7px 9px; border:1px solid #f3d3b3; border-radius:8px; background:#fff8f1; margin:6px 0; }
+  .conflict-opt .nm { font-weight:600; color:#9a3412; overflow-wrap:anywhere; }
+  .conflict-opt .kv { color:#6b7280; font-size:11px; overflow-wrap:anywhere; }
   .topo-graph { overflow:auto; border:1px solid #e5e7eb; border-radius:10px; background:#fcfcfd; padding:6px; cursor:grab; }
   .topo-graph.panning { cursor:grabbing; user-select:none; }
   .topo-graph svg { display:block; }
@@ -435,6 +444,17 @@ body.topo-standalone header, body.topo-standalone main { display:none; }
     </div>
   </div>
 </div>
+<div class="modal" id="conflict-modal" hidden>
+  <div class="card" style="width:min(620px,94vw);border-radius:16px;padding:18px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <h2 style="margin:0;font-size:16px">决策冲突</h2>
+      <span class="count" id="conflict-state" style="margin:0;flex:1;text-align:right"></span>
+      <button id="conflict-close" class="ghost small" title="关闭">×</button>
+    </div>
+    <div class="count" id="conflict-hint" style="margin:6px 0 4px"></div>
+    <div id="conflict-list"></div>
+  </div>
+</div>
 <div class="modal" id="assistant-modal" hidden>
   <div class="card" style="width:min(640px,94vw);max-height:84vh;display:flex;flex-direction:column;gap:10px;border-radius:16px;padding:18px">
     <div style="display:flex;align-items:center;gap:8px">
@@ -536,6 +556,25 @@ body.topo-standalone header, body.topo-standalone main { display:none; }
   // 当前对话（面板 iframe 由宿主传入 ?session=<id>）：用来判断「当前对话是否已生效」
   const SESSION_TAG = String(new URLSearchParams(location.search).get('session') || '').trim();
   let sessionActiveKeys = new Set();
+  let decisionGroups = [];   // 决策点（同一点多个选项 = 分支冲突，卡片标橙）
+  function decisionsOfRule(r) {
+    const ids = Array.isArray(r && r.decisions) ? r.decisions : [];
+    return decisionGroups.filter((d) => ids.includes(d.decision));
+  }
+  function decisionsOfNode(nodeId) {
+    return decisionGroups.find((d) => d.conflict && (d.options || []).some((o) => o.kind === 'node' && o.nodeId === nodeId)) || null;
+  }
+  function pathToNode(nodeId) {
+    const walk = (nodes, trail) => {
+      for (const n of nodes || []) {
+        const next = [...trail, n.id];
+        if (n.id === nodeId) return next;
+        if (n.children) { const hit = walk(n.children, next); if (hit) return hit; }
+      }
+      return null;
+    };
+    return tree ? walk(tree.roots, []) : null;
+  }
   async function loadSessionState() {
     if (!SESSION_TAG) return;
     try {
@@ -597,12 +636,16 @@ body.topo-standalone header, body.topo-standalone main { display:none; }
     const active = selected && selected.key === r.key && selected.scope === r.scope;
     const isCopy = Boolean(copy);
     const cardNode = isCopy ? copy.nodeId : (r.nodeId || '');
-    return `<div class="item rule-item ${isCopy ? 'copy' : ''} ${active ? 'active' : ''}" data-key="${esc(r.key)}" data-scope="${esc(r.scope)}" data-node="${esc(cardNode)}" data-copy="${isCopy ? '1' : ''}" draggable="${isCopy ? 'false' : 'true'}" style="--i:${idx}" title="${esc(r.value)}">
+    const conflicts = decisionsOfRule(r).filter((d) => d.conflict);
+    const conflict = conflicts.length > 0;
+    const conflictTitle = conflict ? conflicts.map((d) => d.decision + '：' + d.options.map((o) => o.option).join(' / ')).join('\n') : '';
+    return `<div class="item rule-item ${isCopy ? 'copy' : ''} ${conflict ? 'conflict' : ''} ${active ? 'active' : ''}" data-key="${esc(r.key)}" data-scope="${esc(r.scope)}" data-node="${esc(cardNode)}" data-copy="${isCopy ? '1' : ''}" draggable="${isCopy ? 'false' : 'true'}" style="--i:${idx}" title="${esc(r.value)}">
       <span class="name">${esc(labelOf(r))}</span>
       <span class="tags">
         <span class="chip">${esc(CAT_LABEL[r.category] || r.category)}</span>
         <span class="chip" title="${covLabel(r)}">${covLabel(r)}</span>
         <span class="chip ${esc(r.status)}">${esc(STATUS_LABEL[r.status] || r.status)}</span>
+        ${conflict ? `<span class="chip conflict-chip" data-conflict-decision="${esc(conflicts[0].decision)}" title="${esc(conflictTitle)}">冲突 · 点我看选项</span>` : ''}
         ${(String(r.value).trim().length < 12 && !r.explain) ? '<span class="chip warn" title="内容偏短、可能看不懂；点开详情可以看白话解释或让 AI 补全">内容较短</span>' : ''}
         ${r.needsReview ? `<span class="chip warn" title="适用面推断置信不足，当前按推断值生效；用 rules_coverage op=review/accept 处理">待复核</span>` : ''}
         ${isCopy ? `<span class="c-actions"><button data-jump-origin="${esc(r.key)}" title="回到最早的那张原规则">跳转到原规则</button></span>` : ''}
@@ -742,11 +785,13 @@ body.topo-standalone header, body.topo-standalone main { display:none; }
     };
     const catCard = (n, idx = 0) => {
       const kids = n.children || [];
-      return `<div class="item cat-card" data-node="${esc(n.id)}" draggable="true" style="--i:${idx}" title="${esc(n.desc || n.title)}">
+      const conflict = decisionsOfNode(n.id);
+      return `<div class="item cat-card ${conflict ? 'conflict' : ''}" data-node="${esc(n.id)}" draggable="true" style="--i:${idx}" title="${esc(n.desc || n.title)}">
         <span class="name"><span class="chev">▶</span><span class="c-title">${esc(n.title)}</span></span>
         <span class="tags">
           <span class="chip">分类</span>
           <span class="chip">${totalOf(n)} 条</span>
+          ${conflict ? `<span class="chip conflict-chip" data-conflict-decision="${esc(conflict.decision)}" title="这个分类是决策点「${esc(conflict.decision)}」的一个分支；点我看全部选项">冲突 · 点我看分支</span>` : ''}
           <span class="c-actions"><button data-act="rename" title="重命名">改名</button><button data-act="top" title="移到顶级（放到最前）">顶层</button><button data-act="delete" title="删除（含子类）">删除</button></span>
         </span>
         <span class="val">${kids.length ? `${kids.length} 个子类 · ${ownOf(n.id)} 条直属 · 共 ${totalOf(n)} 条，点击展开` : `${ownOf(n.id)} 条准则，点击查看`}</span>
@@ -1379,6 +1424,14 @@ key：${r.key}
       { label: '复制…', run: () => openMoveDialog({ kind: 'node', nodeId: id, copy: true }) },
       { label: '移动…', run: () => openMoveDialog({ kind: 'node', nodeId: id }) },
       { label: '改名…', run: async () => { const title = await askText('重命名分类', cur ? cur.title : '', '只改名字，不移动其中的准则。'); if (title && title !== (cur ? cur.title : '')) await treeAction({ action: 'node-rename', nodeId: id, title }); } },
+      { label: '设为决策选项…', run: async () => {
+        const d = await askText('决策点', (cur && cur.decision) || '', '点分 id，如 video.pipeline。同一决策点下的多个文件夹 = 分支选择；留空 = 取消。');
+        if (d === null) return;
+        const o = await askText('选项名', (cur && cur.option) || (cur && cur.title) || '', '展示给用户看的选项名，如「新视频制作」。');
+        if (o === null) return;
+        await treeAction({ action: 'node-decision', nodeId: id, decision: d, option: o });
+        notify(d ? '已设为决策选项：' + d : '已取消决策选项');
+      } },
       { label: '删除（含子类）', danger: true, run: async () => { const ok = await askConfirm('删除分类', '删除该分类及其子类？分类里的准则不会被删除，会回到未分类/自动归类。', true); if (ok) await treeAction({ action: 'node-delete', nodeId: id }); } },
     ]);
   }
@@ -1606,8 +1659,12 @@ key：${r.key}
   async function load() {
     try {
       await loadSessionState();
-      const j = await api('/dsh-rules/list' + (schemeId ? '?scheme=' + encodeURIComponent(schemeId) : ''));
+      const qs = [];
+      if (schemeId) qs.push('scheme=' + encodeURIComponent(schemeId));
+      if (SESSION_TAG) qs.push('session=' + encodeURIComponent(SESSION_TAG));
+      const j = await api('/dsh-rules/list' + (qs.length ? '?' + qs.join('&') : ''));
       all = j.rules || [];
+      decisionGroups = Array.isArray(j.decisions) ? j.decisions : [];
       schemes = j.schemes || [];
       tree = j.tree || null;
       schemeId = j.schemeId || schemeId || 'default';
@@ -1875,6 +1932,39 @@ key：${r.key}
     if (sid && navigator.clipboard) navigator.clipboard.writeText(sid).catch(() => {});
     notify('没找到左侧会话行（' + (diag || 'unknown') + '），已复制 id；也可在「准则会话分组」里点「准则助手」');
   }
+  // ---------- 决策冲突弹窗：点橙色「冲突」看同一决策点有哪些分支 ----------
+  function openConflict(decisionId) {
+    const d = decisionGroups.find((x) => x.decision === decisionId);
+    if (!d) return;
+    $('conflict-state').textContent = d.conflict ? `${d.options.length} 个分支` : '唯一选项';
+    $('conflict-hint').textContent = '这是分支选择，不是坏数据。实际运行到这里时，助手应停下来让你选，而不是自己拍板。';
+    $('conflict-list').innerHTML = d.options.map((o) => `<div class="conflict-opt">
+      <div><div class="nm">${esc(o.option)}</div><div class="kv">${o.kind === 'node' ? '分类：' + (o.nodeId || '') : '规则：' + esc((o.rules || []).join(', '))} · ${(o.rules || []).length} 条</div></div>
+      <button class="ghost small" data-conflict-node="${esc(o.nodeId || '')}" data-conflict-rules="${esc((o.rules || []).slice(0, 1).join(','))}">${o.kind === 'node' ? '打开分类' : '查看规则'}</button>
+    </div>`).join('');
+    $('conflict-list').querySelectorAll('[data-conflict-node]').forEach((b) => b.addEventListener('click', () => {
+      closeConflict();
+      const nodeId = b.dataset.conflictNode;
+      if (nodeId) {
+        const path = pathToNode(nodeId);
+        if (path) { drillPath = path; renderTree({ resetScroll: true }); return; }
+      }
+      const key = (b.dataset.conflictRules || '').split(',')[0];
+      const rule = all.find((r) => r.key === key);
+      if (key) openDetail(key, rule ? rule.scope : 'global');
+    }));
+    $('conflict-modal').hidden = false;
+  }
+  function closeConflict() { $('conflict-modal').hidden = true; }
+  $('conflict-close').addEventListener('click', closeConflict);
+  $('conflict-modal').addEventListener('click', (e) => { if (e.target === $('conflict-modal')) closeConflict(); });
+  $('tree').addEventListener('click', (e) => {
+    const chip = e.target && e.target.closest ? e.target.closest('[data-conflict-decision]') : null;
+    if (!chip) return;
+    e.preventDefault();
+    e.stopPropagation();
+    openConflict(chip.dataset.conflictDecision);
+  }, true);
   $('assistant-expand').addEventListener('click', openAssistantInSidebar);
   $('btn-assistant').addEventListener('click', () => openAssistant(''));
   $('btn-read-rules').addEventListener('click', runReadRules);
