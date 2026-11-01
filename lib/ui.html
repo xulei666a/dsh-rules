@@ -120,6 +120,7 @@
   .rule-item.conflict { background:color-mix(in srgb, #f97316 16%, var(--card)); border-color:color-mix(in srgb, #f97316 42%, var(--line)); }
   @media (prefers-color-scheme: dark) { .rule-item.conflict { background:color-mix(in srgb, #f97316 24%, var(--card)); } }
   .rule-item.conflict .conflict-chip { background:#f97316; color:#fff; border-color:transparent; cursor:pointer; }
+  .rule-item.session-off { opacity:.55; background:color-mix(in srgb, #9ca3af 12%, var(--card)); border-style:dashed; }
   .cat-card.conflict { background:color-mix(in srgb, #f97316 14%, var(--card)); border-color:color-mix(in srgb, #f97316 42%, var(--line)); }
   .cat-card.conflict .conflict-chip { background:#f97316; color:#fff; border-color:transparent; cursor:pointer; }
   .conflict-opt { display:flex; gap:8px; align-items:center; justify-content:space-between; padding:7px 9px; border:1px solid #f3d3b3; border-radius:8px; background:#fff8f1; margin:6px 0; }
@@ -556,6 +557,8 @@ body.topo-standalone header, body.topo-standalone main { display:none; }
   // 当前对话（面板 iframe 由宿主传入 ?session=<id>）：用来判断「当前对话是否已生效」
   const SESSION_TAG = String(new URLSearchParams(location.search).get('session') || '').trim();
   let sessionActiveKeys = new Set();
+  let sessionDisabledKeys = new Set();   // 本对话因「决策选择」被禁用的规则
+  let sessionChoices = {};               // { decision: {optionId, optionLabel} }
   let decisionGroups = [];   // 决策点（同一点多个选项 = 分支冲突，卡片标橙）
   function decisionsOfRule(r) {
     const ids = Array.isArray(r && r.decisions) ? r.decisions : [];
@@ -639,12 +642,14 @@ body.topo-standalone header, body.topo-standalone main { display:none; }
     const conflicts = decisionsOfRule(r).filter((d) => d.conflict);
     const conflict = conflicts.length > 0;
     const conflictTitle = conflict ? conflicts.map((d) => d.decision + '：' + d.options.map((o) => o.option).join(' / ')).join('\n') : '';
-    return `<div class="item rule-item ${isCopy ? 'copy' : ''} ${conflict ? 'conflict' : ''} ${active ? 'active' : ''}" data-key="${esc(r.key)}" data-scope="${esc(r.scope)}" data-node="${esc(cardNode)}" data-copy="${isCopy ? '1' : ''}" draggable="${isCopy ? 'false' : 'true'}" style="--i:${idx}" title="${esc(r.value)}">
+    const off = sessionDisabledKeys.has(r.key);
+    return `<div class="item rule-item ${isCopy ? 'copy' : ''} ${conflict ? 'conflict' : ''} ${off ? 'session-off' : ''} ${active ? 'active' : ''}" data-key="${esc(r.key)}" data-scope="${esc(r.scope)}" data-node="${esc(cardNode)}" data-copy="${isCopy ? '1' : ''}" draggable="${isCopy ? 'false' : 'true'}" style="--i:${idx}" title="${esc(r.value)}">
       <span class="name">${esc(labelOf(r))}</span>
       <span class="tags">
         <span class="chip">${esc(CAT_LABEL[r.category] || r.category)}</span>
         <span class="chip" title="${covLabel(r)}">${covLabel(r)}</span>
         <span class="chip ${esc(r.status)}">${esc(STATUS_LABEL[r.status] || r.status)}</span>
+        ${off ? '<span class="chip warn" title="本对话已选其它决策分支，这条在本对话不生效（可在「冲突 · 点我看分支」里取消选择）">本对话已禁用</span>' : ''}
         ${conflict ? `<span class="chip conflict-chip" data-conflict-decision="${esc(conflicts[0].decision)}" title="${esc(conflictTitle)}">冲突 · 点我看选项</span>` : ''}
         ${(String(r.value).trim().length < 12 && !r.explain) ? '<span class="chip warn" title="内容偏短、可能看不懂；点开详情可以看白话解释或让 AI 补全">内容较短</span>' : ''}
         ${r.needsReview ? `<span class="chip warn" title="适用面推断置信不足，当前按推断值生效；用 rules_coverage op=review/accept 处理">待复核</span>` : ''}
@@ -1665,6 +1670,8 @@ key：${r.key}
       const j = await api('/dsh-rules/list' + (qs.length ? '?' + qs.join('&') : ''));
       all = j.rules || [];
       decisionGroups = Array.isArray(j.decisions) ? j.decisions : [];
+      sessionDisabledKeys = new Set(Array.isArray(j.sessionDisabled) ? j.sessionDisabled : []);
+      sessionChoices = j.sessionChoices && typeof j.sessionChoices === 'object' ? j.sessionChoices : {};
       schemes = j.schemes || [];
       tree = j.tree || null;
       schemeId = j.schemeId || schemeId || 'default';
@@ -1936,12 +1943,18 @@ key：${r.key}
   function openConflict(decisionId) {
     const d = decisionGroups.find((x) => x.decision === decisionId);
     if (!d) return;
-    $('conflict-state').textContent = d.conflict ? `${d.options.length} 个分支` : '唯一选项';
-    $('conflict-hint').textContent = '这是分支选择，不是坏数据。实际运行到这里时，助手应停下来让你选，而不是自己拍板。';
+    const chosen = d.sessionChoice || null;
+    $('conflict-state').textContent = chosen ? '本对话已选' : (d.branches ? `${d.options.length} 个分支` : '唯一选项');
+    $('conflict-hint').textContent = chosen
+      ? `当前对话已选：${chosen.optionLabel || chosen.optionId}；其它分支在本对话已禁用。`
+      : '这是分支选择，不是坏数据。实际运行到这里时，助手应停下来让你选，而不是自己拍板。';
     $('conflict-list').innerHTML = d.options.map((o) => `<div class="conflict-opt">
-      <div><div class="nm">${esc(o.option)}</div><div class="kv">${o.kind === 'node' ? '分类：' + (o.nodeId || '') : '规则：' + esc((o.rules || []).join(', '))} · ${(o.rules || []).length} 条</div></div>
-      <button class="ghost small" data-conflict-node="${esc(o.nodeId || '')}" data-conflict-rules="${esc((o.rules || []).slice(0, 1).join(','))}">${o.kind === 'node' ? '打开分类' : '查看规则'}</button>
-    </div>`).join('');
+      <div><div class="nm">${esc(o.option)}${o.chosen ? ' <span style="font-size:11px;color:#15803d">（本对话已选）</span>' : ''}</div><div class="kv">${o.kind === 'node' ? '分类：' + (o.nodeId || '') : '规则：' + esc((o.rules || []).join(', '))} · ${(o.rules || []).length} 条</div></div>
+      <span style="display:flex;gap:6px">
+        ${SESSION_TAG && !o.chosen ? `<button class="primary small" data-choice-option="${esc(o.id)}" data-choice-label="${esc(o.option)}">本次用这套</button>` : ''}
+        <button class="ghost small" data-conflict-node="${esc(o.nodeId || '')}" data-conflict-rules="${esc((o.rules || []).slice(0, 1).join(','))}">${o.kind === 'node' ? '打开分类' : '查看规则'}</button>
+      </span>
+    </div>`).join('') + (chosen ? `<div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="ghost small" data-choice-clear="1">取消本对话选择</button></div>` : '');
     $('conflict-list').querySelectorAll('[data-conflict-node]').forEach((b) => b.addEventListener('click', () => {
       closeConflict();
       const nodeId = b.dataset.conflictNode;
@@ -1953,6 +1966,31 @@ key：${r.key}
       const rule = all.find((r) => r.key === key);
       if (key) openDetail(key, rule ? rule.scope : 'global');
     }));
+    // 「本次用这套」：选中一个分支，其它分支的规则在本对话禁用
+    $('conflict-list').querySelectorAll('[data-choice-option]').forEach((b) => b.addEventListener('click', async () => {
+      const optionId = b.dataset.choiceOption;
+      const optionLabel = b.dataset.choiceLabel || '';
+      const chosenOption = d.options.find((o) => o.id === optionId);
+      if (!chosenOption) return;
+      const enableKeys = chosenOption.rules || [];
+      const disableKeys = [];
+      for (const o of d.options) if (o.id !== optionId) for (const k of (o.rules || [])) if (!enableKeys.includes(k)) disableKeys.push(k);
+      try {
+        await api('/dsh-rules/session-choice', { session: SESSION_TAG, decision: d.decision, optionId, optionLabel, enableKeys, disableKeys });
+        closeConflict();
+        await load();
+        notify('本对话已选：' + optionLabel + '（其它分支已禁用）');
+      } catch (e) { notify('选择失败：' + e.message); }
+    }));
+    const clearBtn = $('conflict-list').querySelector('[data-choice-clear]');
+    if (clearBtn) clearBtn.addEventListener('click', async () => {
+      try {
+        await api('/dsh-rules/session-choice', { session: SESSION_TAG, decision: d.decision, action: 'clear' });
+        closeConflict();
+        await load();
+        notify('已取消本对话的决策选择');
+      } catch (e) { notify('取消失败：' + e.message); }
+    });
     $('conflict-modal').hidden = false;
   }
   function closeConflict() { $('conflict-modal').hidden = true; }

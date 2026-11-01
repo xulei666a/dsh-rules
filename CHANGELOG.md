@@ -2,6 +2,14 @@
 
 本文件记录**发布版本**的变更；0.x 开发期的完整逐条历史见 [`docs/CHANGELOG-full.md`](docs/CHANGELOG-full.md)。
 
+## 1.4.0 (2026-11-01) — 本对话选择分支
+
+- **冲突弹窗新增「本次用这套」**：在决策冲突弹窗里点某个分支，会把它设为当前对话的选择，并把其它分支的规则写入本对话禁用清单（`session-overrides.json` 的 `_disabled` / `_choices`，7 天 TTL 随会话清理）。
+- 选择后：`resolveEffective` 不再加载被禁用规则；`decisionsOf` 返回 `sessionChoice` 且 `conflict=false`；`rules_route` 不再提示分支冲突，直接按已选分支执行；弹窗里有「取消本对话选择」恢复。
+- 面板：被本对话禁用的规则卡变灰、虚线、带「本对话已禁用」标记；`/list` 返回 `sessionDisabled` / `sessionChoices`；新增 `POST /dsh-rules/session-choice`。
+- 助手职责第 9 条补充：用户选过后不再重复问。
+- 自检 136 项全过（新增 5 项本对话选择用例），客户端 4 项全过。
+
 ## 1.3.0 (2026-11-01) — 决策点与分支冲突
 
 - **概念**：规则可以属于某个「决策点」（`decision`，点分 id，如 `video.pipeline`）并给出一个「分支选项」（`option`）。同一决策点上有 ≥2 个生效选项 = 分支冲突，运行时**必须让用户选**，agent 不能自己拍板。decision 前缀关系（`video.pipeline` vs `video.pipeline.v3`）视为上下位，不算冲突。

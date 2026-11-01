@@ -442,6 +442,23 @@ try {
   store.removeRule('demo.rule.decision')
   store.removeRule('demo.prefix.one')
   store.removeRule('demo.prefix.two')
+
+  // 19) 本对话选择分支：选中 A，B 在本对话禁用；取消后恢复
+  const sessTag = 'selftest-session-choice'
+  store.upsertRule({ key: 'choice.pick.a', value: 'A 做法', category: 'workflow', status: 'active', decision: 'choice.demo', option: 'A 选项' }, { sync: false })
+  store.upsertRule({ key: 'choice.pick.b', value: 'B 做法', category: 'workflow', status: 'active', decision: 'choice.demo', option: 'B 选项' }, { sync: false })
+  const beforeChoice = decisions.decisionsOf(store.loadRules(), { session: sessTag }).find((g) => g.decision === 'choice.demo')
+  check('选择前：同一决策点两个选项算冲突', beforeChoice && beforeChoice.conflict && beforeChoice.options.length === 2)
+  store.setSessionChoice(sessTag, { decision: 'choice.demo', optionId: 'rule:choice.pick.a', optionLabel: 'A 选项', enableKeys: ['choice.pick.a'], disableKeys: ['choice.pick.b'] })
+  check('选择后：B 进入本对话禁用清单', store.loadSessionDisabled(sessTag).has('choice.pick.b'))
+  const effChosen = store.resolveEffective(store.loadRules(), { session: sessTag }).map((r) => r.key)
+  check('选择后：被禁用规则不进入本对话生效集合', effChosen.includes('choice.pick.a') && !effChosen.includes('choice.pick.b'))
+  const afterChoice = decisions.decisionsOf(store.loadRules(), { session: sessTag }).find((g) => g.decision === 'choice.demo')
+  check('选择后：不再报冲突并记录已选分支', afterChoice && !afterChoice.conflict && afterChoice.sessionChoice && afterChoice.sessionChoice.optionId === 'rule:choice.pick.a')
+  store.clearSessionChoice(sessTag, 'choice.demo')
+  check('取消选择后：禁用规则恢复生效', !store.loadSessionDisabled(sessTag).has('choice.pick.b') && store.resolveEffective(store.loadRules(), { session: sessTag }).some((r) => r.key === 'choice.pick.b'))
+  store.removeRule('choice.pick.a')
+  store.removeRule('choice.pick.b')
 } finally {
   try { fs.rmSync(tmp, { recursive: true, force: true }) } catch {}
 }
