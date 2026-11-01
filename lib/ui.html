@@ -109,6 +109,13 @@
   .sort-menu button { display:block; width:100%; text-align:left; border:0; background:transparent; padding:7px 10px; border-radius:6px; font-size:12.5px; color:#111827; cursor:pointer; }
   .sort-menu button:hover { background:#f3f4f6; }
   .sort-menu button.on { background:#eef2ff; color:#1d4ed8; font-weight:600; }
+  .ctx-menu { position:fixed; z-index:140; background:#fff; border:1px solid #e5e7eb; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.16); padding:4px; min-width:160px; }
+  .ctx-menu button { display:block; width:100%; text-align:left; border:0; background:transparent; padding:7px 10px; border-radius:6px; font-size:12.5px; color:#111827; cursor:pointer; }
+  .ctx-menu button:hover { background:#f3f4f6; }
+  .ctx-menu button.danger { color:#dc2626; }
+  .rule-item.copy { background:color-mix(in srgb, #60a5fa 16%, var(--card)); border-color:color-mix(in srgb, #3b82f6 36%, var(--line)); }
+  @media (prefers-color-scheme: dark) { .rule-item.copy { background:color-mix(in srgb, #60a5fa 26%, var(--card)); } }
+  .rule-item.copy .name::after { content:'副本'; margin-left:6px; font-size:10px; font-weight:400; color:#2563eb; opacity:.85; }
   .topo-graph { overflow:auto; border:1px solid #e5e7eb; border-radius:10px; background:#fcfcfd; padding:6px; cursor:grab; }
   .topo-graph.panning { cursor:grabbing; user-select:none; }
   .topo-graph svg { display:block; }
@@ -586,9 +593,11 @@ body.topo-standalone header, body.topo-standalone main { display:none; }
     if ($('btn-scheme-reset')) $('btn-scheme-reset').style.display = cur.builtin ? '' : 'none';
     if ($('tree-hint')) $('tree-hint').textContent = `分类方案 ${schemes.length} 套 · 当前「${cur.title || ''}」· 已归类 ${tree ? tree.assigned : all.length}/${tree ? tree.total : all.length}`;
   }
-  function ruleCard(r, idx = 0) {
+  function ruleCard(r, idx = 0, copy = null) {
     const active = selected && selected.key === r.key && selected.scope === r.scope;
-    return `<div class="item rule-item ${active ? 'active' : ''}" data-key="${esc(r.key)}" data-scope="${esc(r.scope)}" data-node="${esc(r.nodeId || '')}" draggable="true" style="--i:${idx}" title="${esc(r.value)}">
+    const isCopy = Boolean(copy);
+    const cardNode = isCopy ? copy.nodeId : (r.nodeId || '');
+    return `<div class="item rule-item ${isCopy ? 'copy' : ''} ${active ? 'active' : ''}" data-key="${esc(r.key)}" data-scope="${esc(r.scope)}" data-node="${esc(cardNode)}" data-copy="${isCopy ? '1' : ''}" draggable="${isCopy ? 'false' : 'true'}" style="--i:${idx}" title="${esc(r.value)}">
       <span class="name">${esc(labelOf(r))}</span>
       <span class="tags">
         <span class="chip">${esc(CAT_LABEL[r.category] || r.category)}</span>
@@ -596,7 +605,7 @@ body.topo-standalone header, body.topo-standalone main { display:none; }
         <span class="chip ${esc(r.status)}">${esc(STATUS_LABEL[r.status] || r.status)}</span>
         ${(String(r.value).trim().length < 12 && !r.explain) ? '<span class="chip warn" title="内容偏短、可能看不懂；点开详情可以看白话解释或让 AI 补全">内容较短</span>' : ''}
         ${r.needsReview ? `<span class="chip warn" title="适用面推断置信不足，当前按推断值生效；用 rules_coverage op=review/accept 处理">待复核</span>` : ''}
-        <span class="c-actions"><button data-rule-move="${esc(r.key)}" title="移出分类：选择移动到哪个文件夹（或未分类）">移出</button></span>
+        ${isCopy ? `<span class="c-actions"><button data-jump-origin="${esc(r.key)}" title="回到最早的那张原规则">跳转到原规则</button></span>` : ''}
       </span>
       <span class="val">${esc(String(r.value).replace(/\s+/g,' ').slice(0, 90))}${String(r.value).length > 90 ? '…' : ''}</span>
     </div>`;
@@ -682,7 +691,8 @@ body.topo-standalone header, body.topo-standalone main { display:none; }
     };
     // 计数跟随筛选：所有节点上的「N 条」都只统计当前筛选后的规则
     const shownRules = all.filter(match);
-    const ownOf = (nodeId) => shownRules.filter((r) => (r.nodeId || null) === (nodeId || null)).length;
+    const copyShown = (nodeId) => shownRules.filter((r) => (r.copies || []).some((c) => c.nodeId === nodeId)).length;
+    const ownOf = (nodeId) => shownRules.filter((r) => (r.nodeId || null) === (nodeId || null)).length + copyShown(nodeId);
     const totalOf = (n) => ownOf(n.id) + (n.children || []).reduce((s, c) => s + totalOf(c), 0);
     // 展示排序：不改变树数据，只改这一屏的顺序；条数一律按"当前筛选后剩余"算，空分类永远排最后
     const sortNodes = (nodes) => {
@@ -720,6 +730,16 @@ body.topo-standalone header, body.topo-standalone main { display:none; }
       return list;
     };
     const rulesOf = orderedRules;
+    // 文件夹里的卡片：正版 + 副本（副本淡蓝、指回原规则）
+    const ruleCardsFor = (nodeId) => {
+      const rows = orderedRules(nodeId).map((r) => ({ r, copy: null }));
+      for (const r of all) {
+        if (!match(r)) continue;
+        const c = (r.copies || []).find((x) => x.nodeId === nodeId);
+        if (c && !rows.some((x) => x.r.key === r.key)) rows.push({ r, copy: c });
+      }
+      return rows.map((x, i) => ruleCard(x.r, i, x.copy)).join('');
+    };
     const catCard = (n, idx = 0) => {
       const kids = n.children || [];
       return `<div class="item cat-card" data-node="${esc(n.id)}" draggable="true" style="--i:${idx}" title="${esc(n.desc || n.title)}">
@@ -727,7 +747,7 @@ body.topo-standalone header, body.topo-standalone main { display:none; }
         <span class="tags">
           <span class="chip">分类</span>
           <span class="chip">${totalOf(n)} 条</span>
-          <span class="c-actions"><button data-act="rename" title="重命名">改名</button><button data-act="move" title="移出分类：选择移动到哪个分类（或顶级）">移出</button><button data-act="top" title="移到顶级（放到最前）">顶层</button><button data-act="delete" title="删除（含子类）">删除</button></span>
+          <span class="c-actions"><button data-act="rename" title="重命名">改名</button><button data-act="top" title="移到顶级（放到最前）">顶层</button><button data-act="delete" title="删除（含子类）">删除</button></span>
         </span>
         <span class="val">${kids.length ? `${kids.length} 个子类 · ${ownOf(n.id)} 条直属 · 共 ${totalOf(n)} 条，点击展开` : `${ownOf(n.id)} 条准则，点击查看`}</span>
       </div>`;
@@ -781,15 +801,15 @@ body.topo-standalone header, body.topo-standalone main { display:none; }
         levelParts.push(`<div class="sib-row">${addButtons(cur.id)}</div>`);
         levelParts.push(cards(sortNodes(cur.children)));
         // 这个文件夹里除了子文件夹，也可能直接放着准则：一起列出来
-        const ownRules = rulesOf(cur.id);
-        if (ownRules.length) {
-          levelParts.push(`<div class="rules-head">这个文件夹里的准则（${ownRules.length} 条）</div>`);
-          levelParts.push(ownRules.map((r, i) => ruleCard(r, i)).join(''));
+        const ownCards = ruleCardsFor(cur.id);
+        if (ownCards) {
+          levelParts.push(`<div class="rules-head">这个文件夹里的准则（${ownOf(cur.id)} 条）</div>`);
+          levelParts.push(ownCards);
         }
       } else if (cur) {
         levelParts.push(`<div class="sib-row">${addButtons(cur.id)}</div>`);
-        const rs = rulesOf(cur.id);
-        levelParts.push(rs.length ? rs.map((r, i) => ruleCard(r, i)).join('') : '<div class="empty">该分类下还没有准则</div>');
+        const cardsHtml = ruleCardsFor(cur.id);
+        levelParts.push(cardsHtml || '<div class="empty">该分类下还没有准则</div>');
       } else {
         levelParts.push(`<div class="sib-row">${addButtons(null)}</div>`);
         levelParts.push(cards(sortNodes(tree.roots)));
@@ -839,7 +859,7 @@ body.topo-standalone header, body.topo-standalone main { display:none; }
     if (el.dataset.sort) return 'a:sort:' + (el.dataset.sortTo || 'root');
     if (el.dataset.unassigned) return 'n:__unassigned__';
     if (el.dataset.node) return 'n:' + el.dataset.node;
-    if (el.dataset.key) return 'r:' + el.dataset.key + '|' + el.dataset.scope;
+    if (el.dataset.key) return 'r:' + el.dataset.key + '|' + el.dataset.scope + '|' + (el.dataset.copy ? 'c' : '') + (el.dataset.node || '');
     return null;
   };
   function snapshotTree() {
@@ -1269,7 +1289,7 @@ key：${r.key}
     const none = $('move-crumbs').querySelector('[data-mv-none]') || $('move-list').querySelector('[data-mv-none]');
     if (none) none.addEventListener('click', () => { moveState.path = []; renderMoveDialog(); });
   }
-  function openMoveDialog({ kind, key = '', nodeId = '' } = {}) {
+  function openMoveDialog({ kind, key = '', nodeId = '', copy = false, isCopy = false } = {}) {
     const byId = new Map(nodeListWithParent().map((n) => [n.id, n]));
     let curPath = [];
     if (kind === 'rule') {
@@ -1279,17 +1299,106 @@ key：${r.key}
       const cur = byId.get(nodeId);
       curPath = cur && cur.parentId ? pathOf(byId, cur.parentId) : [];
     }
-    moveState = { kind, key, nodeId, path: curPath.map((x) => x.id), banned: kind === 'node' ? descendantsSet(nodeId) : new Set() };
-    $('move-title').textContent = kind === 'rule' ? '把这条准则移到哪里？' : '把这个分类移到哪里？';
+    moveState = { kind, key, nodeId, copy: Boolean(copy), isCopy: Boolean(isCopy), path: curPath.map((x) => x.id), banned: kind === 'node' ? descendantsSet(nodeId) : new Set() };
+    const what = kind === 'rule' ? (isCopy ? '这张副本' : '这条准则') : '这个分类';
+    $('move-title').textContent = copy ? ('把' + what + '复制到哪里？') : ('把' + what + '移到哪里？');
     $('move-ok').onclick = async () => {
       const st = moveState; if (!st) return;
       const rawTarget = st.path.length ? st.path[st.path.length - 1] : null;
       closeMoveDialog();
+      if (st.copy && st.kind === 'rule' && !rawTarget) { notify('请选择一个文件夹作为复制目标'); return; }
+      if (st.copy && st.kind === 'rule' && st.isCopy) { await treeAction({ action: 'copy-move', key: st.key, nodeId: st.nodeId, targetId: rawTarget }); return; }
+      if (st.copy && st.kind === 'rule') { await treeAction({ action: 'rule-copy', key: st.key, targetId: rawTarget }); return; }
+      if (st.copy && st.kind === 'node') {
+        try { await api('/dsh-rules/tree', { action: 'node-copy', schemeId, nodeId: st.nodeId, parentId: rawTarget }); await load(); }
+        catch (e) {
+          if (/同名文件夹/.test(String(e.message))) {
+            const src = findNode(st.nodeId);
+            const name = await askText('复制分类', ((src && src.title) || '分类') + ' 副本', '同层级不能重名，换个名字：');
+            if (name) { try { await api('/dsh-rules/tree', { action: 'node-copy', schemeId, nodeId: st.nodeId, parentId: rawTarget, title: name }); await load(); } catch (e2) { notify('复制失败：' + e2.message); } }
+          } else notify('复制失败：' + e.message);
+        }
+        return;
+      }
       if (st.kind === 'rule') await treeAction({ action: 'rule-move', key: st.key, targetId: rawTarget });
       else await treeAction({ action: 'node-move', nodeId: st.nodeId, parentId: rawTarget });
     };
     renderMoveDialog();
     $('move-modal').hidden = false;
+  }
+  // ---------- 右键菜单：卡片（文件夹 / 具体准则）上右键 = 移动 / 复制 / 删除 ----------
+  let ctxMenuEl = null;
+  function closeCtxMenu() {
+    if (ctxMenuEl) { try { ctxMenuEl.remove() } catch {} ctxMenuEl = null }
+    document.removeEventListener('mousedown', onCtxDocDown, true);
+    window.removeEventListener('resize', closeCtxMenu);
+    window.removeEventListener('scroll', closeCtxMenu, true);
+  }
+  function onCtxDocDown(ev) {
+    if (!ctxMenuEl) return;
+    if (ctxMenuEl.contains(ev.target)) return;
+    closeCtxMenu();
+  }
+  function showCtxMenu(ev, items) {
+    closeCtxMenu();
+    const menu = document.createElement('div');
+    menu.className = 'ctx-menu';
+    menu.innerHTML = items.map((it, i) => `<button data-ctx-i="${i}" class="${it.danger ? 'danger' : ''}">${esc(it.label)}</button>`).join('');
+    document.body.appendChild(menu);
+    menu.style.left = Math.max(8, Math.min(window.innerWidth - 190, ev.clientX)) + 'px';
+    menu.style.top = Math.max(8, Math.min(window.innerHeight - (items.length * 34 + 12), ev.clientY)) + 'px';
+    menu.addEventListener('click', (e2) => {
+      const b = e2.target.closest ? e2.target.closest('[data-ctx-i]') : null;
+      if (!b) return;
+      const it = items[Number(b.dataset.ctxI)];
+      closeCtxMenu();
+      if (it && typeof it.run === 'function') it.run();
+    });
+    ctxMenuEl = menu;
+    document.addEventListener('mousedown', onCtxDocDown, true);
+    window.addEventListener('resize', closeCtxMenu);
+    window.addEventListener('scroll', closeCtxMenu, true);
+  }
+  function openRuleMenu(ev, el) {
+    const key = el.dataset.key, scope = el.dataset.scope, nodeId = el.dataset.node || '';
+    const isCopy = el.dataset.copy === '1';
+    const r = all.find((x) => x.key === key) || null;
+    const hasCopies = Boolean(r && (r.copies || []).length);
+    const items = [];
+    if (isCopy) items.push({ label: '移动副本…', run: () => openMoveDialog({ kind: 'rule', key, nodeId, copy: true, isCopy: true }) });
+    else items.push({ label: '移动…', run: () => openMoveDialog({ kind: 'rule', key }) });
+    items.push({ label: '复制…', run: () => openMoveDialog({ kind: 'rule', key, copy: true }) });
+    if (isCopy) items.push({ label: '跳转到原规则', run: () => jumpToRule(key) });
+    if (hasCopies) items.push({ label: isCopy ? '删除这张副本' : '删除原规则卡片', danger: true, run: () => deleteRuleCard(key, nodeId, isCopy) });
+    showCtxMenu(ev, items);
+  }
+  function openNodeMenu(ev, el) {
+    const id = el.dataset.node;
+    const cur = findNode(id);
+    showCtxMenu(ev, [
+      { label: '复制…', run: () => openMoveDialog({ kind: 'node', nodeId: id, copy: true }) },
+      { label: '移动…', run: () => openMoveDialog({ kind: 'node', nodeId: id }) },
+      { label: '改名…', run: async () => { const title = await askText('重命名分类', cur ? cur.title : '', '只改名字，不移动其中的准则。'); if (title && title !== (cur ? cur.title : '')) await treeAction({ action: 'node-rename', nodeId: id, title }); } },
+      { label: '删除（含子类）', danger: true, run: async () => { const ok = await askConfirm('删除分类', '删除该分类及其子类？分类里的准则不会被删除，会回到未分类/自动归类。', true); if (ok) await treeAction({ action: 'node-delete', nodeId: id }); } },
+    ]);
+  }
+  async function jumpToRule(key) {
+    const r = all.find((x) => x.key === key) || null;
+    if (!r || !r.nodeId) { notify('这条规则没有原规则文件夹（可能是未分类）'); return; }
+    const byId = new Map(nodeListWithParent().map((n) => [n.id, n]));
+    const path = pathOf(byId, r.nodeId).map((x) => x.id);
+    await animatePath(path, false);
+    selected = { key, scope: r.scope || 'global' };
+    paintSelection();
+    const escKey = (window.CSS && CSS.escape) ? CSS.escape(key) : key;
+    const el = $('tree').querySelector('.rule-item[data-key="' + escKey + '"][data-copy=""]');
+    if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    else notify('已跳转到原规则所在的文件夹');
+  }
+  async function deleteRuleCard(key, nodeId, isCopy) {
+    const ok = await askConfirm('删除卡片', isCopy ? '删除这张副本卡片？原规则和其他副本不受影响。' : '删除原规则卡片？最旧的那张副本会自动升为正版。', true);
+    if (!ok) return;
+    await treeAction({ action: 'rule-card-delete', key, nodeId, isCopy: !!isCopy });
   }
   // 改动记录：哪条规则、什么时候、由什么改成什么（最新在前）
   function fmtHistTime(at) { try { return new Date(at).toLocaleString('zh-CN', { hour12: false }) } catch { return String(at) } }
@@ -2061,8 +2170,11 @@ key：${r.key}
       await switchSibling(Number(sib.dataset.level || 0), sib.dataset.goto);
       return;
     }
+    const jumpBtn = t.closest ? t.closest('[data-jump-origin]') : null;
+    if (jumpBtn) { ev.stopPropagation(); jumpToRule(jumpBtn.dataset.jumpOrigin); return; }
     const rule = t.closest ? t.closest('.rule-item') : null;
     if (rule) { openDetail(rule.dataset.key, rule.dataset.scope); return; }
+
     const un = t.closest ? t.closest('[data-unassigned]') : null;
     if (un) { await animatePath([], true); return; }
     if (card) {
@@ -2070,6 +2182,14 @@ key：${r.key}
       // 动画一：状态一 → 状态二（自己被压扁成路径行、同级收成小三角、子级生长出来）
       await animatePath([...drillPath, id], false, { clickedId: id });
     }
+  });
+  // 右键菜单：所有卡片（文件夹 / 具体准则）的「移动 / 复制 / 删除」入口
+  document.addEventListener('contextmenu', (ev) => {
+    const t = ev.target;
+    const ruleEl = t && t.closest ? t.closest('.rule-item') : null;
+    const catEl = t && t.closest ? t.closest('.cat-card') : null;
+    if (ruleEl) { ev.preventDefault(); openRuleMenu(ev, ruleEl); return; }
+    if (catEl && !catEl.classList.contains('unassigned-card')) { ev.preventDefault(); openNodeMenu(ev, catEl); }
   });
   // 拖拽 = 移动（节点 / 规则），不复制；落在卡片上/下边缘 = 同级换位，落在中间 = 移入该卡片
   let dragPayload = null;

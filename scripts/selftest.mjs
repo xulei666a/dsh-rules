@@ -362,6 +362,54 @@ try {
   tree.undoLast()
   const view2 = tree.schemeView(tree.getScheme(sid), [])
   check('继续撤回第三步（节点 A 撤销）', !findNode(view2.roots, nA.id))
+
+  // 17) 副本机制：同一规则出现在多个文件夹；正版/副本、移动、删除升级、文件夹复制
+  store.upsertRule({ key: 'copy.test.rule', value: '副本测试规则本体', title: '副本测试', category: 'workflow', status: 'active' }, { sync: false })
+  const cA = tree.addNode({ schemeId: sid, title: '副本源文件夹' })
+  const cB = tree.addNode({ schemeId: sid, title: '副本目标文件夹' })
+  const cC = tree.addNode({ schemeId: sid, title: '副本第三文件夹' })
+  tree.moveRule({ schemeId: sid, key: 'copy.test.rule', nodeId: cA.id })
+  tree.addRuleCopy({ schemeId: sid, key: 'copy.test.rule', nodeId: cB.id })
+  let sCopy = tree.getScheme(sid)
+  check('可给规则新增副本卡', tree.copiesOf(sCopy, 'copy.test.rule').some((c) => c.nodeId === cB.id))
+  const rulesC = store.loadRules()
+  check('副本所在文件夹能列出该规则', tree.rulesOfNode(sCopy, rulesC, cB.id).some((r) => r.key === 'copy.test.rule'))
+  check('正版仍在原文件夹（唯一归属不变）', tree.computeAssignments(sCopy, rulesC).get('copy.test.rule') === cA.id)
+  check('副本数量与记录一致', tree.copiesOf(sCopy, 'copy.test.rule').length === 1)
+  let cDupErr = ''
+  try { tree.addRuleCopy({ schemeId: sid, key: 'copy.test.rule', nodeId: cB.id }) } catch (e) { cDupErr = String(e.message) }
+  check('同文件夹重复副本被拒绝', /已经有/.test(cDupErr), cDupErr)
+  tree.moveRuleCopy({ schemeId: sid, key: 'copy.test.rule', fromNodeId: cB.id, toNodeId: cC.id })
+  sCopy = tree.getScheme(sid)
+  check('副本可移动到其它文件夹', tree.copiesOf(sCopy, 'copy.test.rule').some((c) => c.nodeId === cC.id) && !tree.copiesOf(sCopy, 'copy.test.rule').some((c) => c.nodeId === cB.id))
+  let cNoTarget = ''
+  try { tree.moveRuleCopy({ schemeId: sid, key: 'copy.test.rule', fromNodeId: cC.id, toNodeId: null }) } catch (e) { cNoTarget = String(e.message) }
+  check('副本不能移到未分类', /未分类|文件夹/.test(cNoTarget), cNoTarget)
+  const nodeCopy = tree.copyNode({ schemeId: sid, nodeId: cA.id, parentId: null, title: '副本源文件夹 副本' })
+  sCopy = tree.getScheme(sid)
+  const copiedNode = nodeCopy && nodeCopy.node ? sCopy.nodes.find((n) => n.id === nodeCopy.node) : null
+  check('文件夹复制生成新分类', Boolean(copiedNode && copiedNode.title === '副本源文件夹 副本'))
+  check('复制出来的文件夹里规则是副本', copiedNode ? tree.rulesOfNode(sCopy, store.loadRules(), copiedNode.id).some((r) => r.key === 'copy.test.rule') : false)
+  let cSameNameErr = ''
+  try { tree.copyNode({ schemeId: sid, nodeId: cA.id, parentId: null }) } catch (e) { cSameNameErr = String(e.message) }
+  check('同层级文件夹重名被拒绝', /同名/.test(cSameNameErr), cSameNameErr)
+  if (copiedNode) tree.deleteRuleCard({ schemeId: sid, key: 'copy.test.rule', nodeId: copiedNode.id, isCopy: true })
+  tree.deleteRuleCard({ schemeId: sid, key: 'copy.test.rule', nodeId: cC.id, isCopy: true })
+  sCopy = tree.getScheme(sid)
+  check('删副本只掉那张卡，本体仍在', !tree.copiesOf(sCopy, 'copy.test.rule').some((c) => c.nodeId === cC.id) && Boolean(tree.computeAssignments(sCopy, store.loadRules()).get('copy.test.rule')))
+  // 再加一张副本，然后删原版卡 → 最旧副本升正版
+  tree.addRuleCopy({ schemeId: sid, key: 'copy.test.rule', nodeId: cB.id })
+  tree.deleteRuleCard({ schemeId: sid, key: 'copy.test.rule', nodeId: cA.id, isCopy: false })
+  sCopy = tree.getScheme(sid)
+  check('删原版卡后最旧副本升为正版', tree.computeAssignments(sCopy, store.loadRules()).get('copy.test.rule') === cB.id)
+  store.upsertRule({ key: 'copy.test.solo', value: '无副本规则', title: '无副本', category: 'workflow', status: 'active' }, { sync: false })
+  const soloNode = tree.addNode({ schemeId: sid, title: '无副本文件夹' })
+  tree.moveRule({ schemeId: sid, key: 'copy.test.solo', nodeId: soloNode.id })
+  let cSoloErr = ''
+  try { tree.deleteRuleCard({ schemeId: sid, key: 'copy.test.solo', nodeId: soloNode.id, isCopy: false }) } catch (e) { cSoloErr = String(e.message) }
+  check('无副本时不能删原版卡', /只有存在副本/.test(cSoloErr), cSoloErr)
+  store.removeRule('copy.test.rule')
+  store.removeRule('copy.test.solo')
 } finally {
   try { fs.rmSync(tmp, { recursive: true, force: true }) } catch {}
 }
